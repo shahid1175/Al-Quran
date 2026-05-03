@@ -1,0 +1,6 @@
+{
+  "name": "Al Quran",
+  "description": "An all-in-one Islamic application for Quran reading with Bangla Tafsir, AI-powered recitation feedback, and personal progress tracking.",
+  "requestFramePermissions": ["microphone", "geolocation"],
+  "majorCapabilities": ["AI Recitation Feedback", "Offline Quran", "Personalized Learning"]
+}

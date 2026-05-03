@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "points": { "type": "integer" },
+        "level": { "type": "integer" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "font": { "type": "string", "enum": ["indopak", "madani"] },
+            "showTranslation": { "type": "boolean" },
+            "tafsirLanguage": { "type": "string", "enum": ["bangla", "english"] },
+            "reminderEnabled": { "type": "boolean" },
+            "reminderTime": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Progress": {
+      "title": "Progress",
+      "description": "Detailed tracking for Quran and Tajweed",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["quran", "tajweed"] },
+        "surahId": { "type": "integer" },
+        "ayahId": { "type": "integer" },
+        "lessonId": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "score": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "Saved verses and sections",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "surahId": { "type": "integer" },
+        "ayahId": { "type": "integer" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Leaderboard": {
+      "title": "Leaderboard Entry",
+      "description": "Points summary for leaderboard",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "points": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "users/{userId}/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "User detailed progress tracking"
+    },
+    "users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "User saved verses"
+    },
+    "leaderboard/{userId}": {
+      "schema": "Leaderboard",
+      "description": "Public leaderboard data"
+    }
+  }
+}

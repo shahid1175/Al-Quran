@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- User Profile ---
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'settings', 'points', 'level', 'badges', 'updatedAt'])
+      );
+
+      function isValidUser(data) {
+        return data.uid == request.auth.uid &&
+               data.email is string &&
+               data.points is int &&
+               data.level is int &&
+               data.updatedAt == request.time;
+      }
+
+      // --- Progress ---
+      match /progress/{progressId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidProgress(incoming());
+        allow update: if isOwner(userId) && isValidProgress(incoming());
+        allow delete: if isOwner(userId);
+
+        function isValidProgress(data) {
+          return data.userId == request.auth.uid &&
+                 data.type in ['quran', 'tajweed'] &&
+                 data.score is number &&
+                 data.timestamp == request.time;
+        }
+      }
+
+      // --- Bookmarks ---
+      match /bookmarks/{bookmarkId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBookmark(incoming());
+        allow update: if isOwner(userId) && isValidBookmark(incoming());
+        allow delete: if isOwner(userId);
+
+        function isValidBookmark(data) {
+          return data.userId == request.auth.uid &&
+                 data.surahId is int &&
+                 data.ayahId is int;
+        }
+      }
+    }
+
+    // --- Leaderboard ---
+    match /leaderboard/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isOwner(userId) && isValidLeaderboard(incoming());
+
+      function isValidLeaderboard(data) {
+        return data.userId == request.auth.uid &&
+               data.points is int &&
+               data.updatedAt == request.time;
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  points: number;
+  level: number;
+  badges: string[];
+  settings: {
+    font: 'indopak' | 'madani';
+    showTranslation: boolean;
+    tafsirLanguage: 'bangla' | 'english';
+    reminderEnabled: boolean;
+    reminderTime: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Progress {
+  id?: string;
+  userId: string;
+  type: 'quran' | 'tajweed';
+  surahId?: number;
+  ayahId?: number;
+  lessonId?: string;
+  completed: boolean;
+  score: number;
+  timestamp: Date;
+}
+
+export interface Bookmark {
+  id?: string;
+  userId: string;
+  surahId: number;
+  ayahId: number;
+  note?: string;
+  createdAt: Date;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  displayName: string;
+  points: number;
+  updatedAt: Date;
+}
+
+export type Surah = {
+  number: number;
+  name: string;
+  englishName: string;
+  englishNameTranslation: string;
+  numberOfAyahs: number;
+  revelationType: string;
+};
+
+export type Ayah = {
+  number: number;
+  audio: string;
+  audioSecondary: string[];
+  text: string;
+  tajweed?: string;
+  numberInSurah: number;
+  juz: number;
+  manzil: number;
+  page: number;
+  ruku: number;
+  hizbQuarter: number;
+  sajda: boolean | object;
+};
+
+export type PrayerTimes = {
+  Fajr: string;
+  Sunrise: string;
+  Dhuhr: string;
+  Asr: string;
+  Maghrib: string;
+  Isha: string;
+};
