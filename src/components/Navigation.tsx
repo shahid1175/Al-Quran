@@ -1,14 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, GraduationCap, Trophy, User, Calendar, Compass } from 'lucide-react';
+import { Home, BookOpen, GraduationCap, Trophy, User, Calendar, Compass, Library, Scale, Book } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/quran', label: 'Quran', icon: BookOpen },
+  { path: '/hadith', label: 'Hadith', icon: Library },
+  { path: '/fiqh', label: 'Fiqh', icon: Scale },
+  { path: '/books', label: 'Books', icon: Book },
+  { path: '/explore', label: 'Explore', icon: Compass },
   { path: '/learn', label: 'Learn', icon: GraduationCap },
-  { path: '/grammar', label: 'Grammar', icon: Compass },
-  { path: '/calendar', label: 'Calendar', icon: Calendar },
+  { path: '/calendar', label: 'Islamic Calendar', icon: Calendar },
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -57,13 +60,13 @@ export function Navigation() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-slate-200 bg-white/90 backdrop-blur-xl px-2 py-3 lg:hidden shadow-lg">
-        {navItems.map((item) => (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-slate-200 bg-white/90 backdrop-blur-xl px-2 py-3 lg:hidden shadow-lg overflow-x-auto">
+        {navItems.slice(0, 5).map((item) => (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "flex flex-col items-center gap-1 transition-all duration-200",
+              "flex flex-col items-center gap-1 transition-all duration-200 min-w-[64px]",
               location.pathname === item.path ? "text-primary-600" : "text-slate-400"
             )}
           >

@@ -4,15 +4,44 @@ import { motion } from 'motion/react';
 import { Settings, LogOut, Award, Clock, Bell, Languages, Shield, ChevronRight, Download, Trash2, Target, TrendingUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { storageService } from '../services/storageService';
+import { bookmarkService } from '../services/bookmarkService';
+import { hadithService } from '../services/hadithService';
+import { Bookmark as BookmarkType, FavoriteHadith } from '../types';
 import { Link } from 'react-router-dom';
 
 export default function Profile() {
-  const { profile, logOut } = useAuth();
+  const { user, profile, logOut } = useAuth();
   const [downloadedCount, setDownloadedCount] = useState(0);
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
+  const [favoriteHadiths, setFavoriteHadiths] = useState<FavoriteHadith[]>([]);
+  const [loadingBookmarks, setLoadingBookmarks] = useState(true);
+  const [loadingHadiths, setLoadingHadiths] = useState(true);
 
   useEffect(() => {
     storageService.getAllDownloadedIds().then(ids => setDownloadedCount(ids.length));
-  }, []);
+    if (user) {
+      bookmarkService.getBookmarks(user.uid).then(data => {
+        setBookmarks(data);
+        setLoadingBookmarks(false);
+      });
+      hadithService.getFavorites(user.uid).then(data => {
+        setFavoriteHadiths(data);
+        setLoadingHadiths(false);
+      });
+    }
+  }, [user]);
+
+  const removeBookmark = async (id: string) => {
+    if (!user) return;
+    await bookmarkService.deleteBookmark(user.uid, id);
+    setBookmarks(prev => prev.filter(b => b.id !== id));
+  };
+
+  const removeFavoriteHadith = async (id: string) => {
+    if (!user) return;
+    await hadithService.removeFavorite(user.uid, id);
+    setFavoriteHadiths(prev => prev.filter(h => h.id !== id));
+  };
 
   const sections = [
     { label: 'Appearance', icon: Languages, desc: 'Font & translation settings' },
@@ -113,6 +142,49 @@ export default function Profile() {
          </section>
 
           <div className="grid gap-8 lg:grid-cols-2">
+            {/* Bookmarks Section */}
+            <section className="rounded-[48px] bg-white border border-slate-200 p-10 shadow-sm space-y-8">
+               <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold tracking-tight">Saved Ayahs & Notes</h3>
+                  <span className="px-3 py-1 bg-primary-50 text-primary-600 rounded-full text-[10px] font-black uppercase">{bookmarks.length}</span>
+               </div>
+               
+               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {loadingBookmarks ? (
+                    <div className="text-center py-10 text-slate-400 animate-pulse">Loading bookmarks...</div>
+                  ) : bookmarks.length === 0 ? (
+                    <div className="text-center py-10 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                       <p className="text-slate-400 font-medium">No bookmarks yet</p>
+                    </div>
+                  ) : (
+                    bookmarks.map((bookmark) => (
+                      <div key={bookmark.id} className="group p-6 rounded-[32px] bg-slate-50 border border-slate-100 hover:border-primary-200 transition-all space-y-4">
+                         <div className="flex items-start justify-between">
+                            <Link to={`/quran/${bookmark.surahId}`} className="space-y-1">
+                               <p className="font-bold text-slate-900">Surah {bookmark.surahId}:{bookmark.ayahId}</p>
+                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                 {bookmark.createdAt ? 'Saved' : 'Just now'}
+                               </p>
+                            </Link>
+                            <button 
+                              onClick={() => bookmark.id && removeBookmark(bookmark.id)}
+                              className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                            >
+                               <Trash2 size={16} />
+                            </button>
+                         </div>
+                         
+                         {bookmark.note && (
+                           <div className="p-4 rounded-2xl bg-white border border-slate-100/50 shadow-sm">
+                              <p className="text-[10px] font-black uppercase text-primary-600 tracking-tighter mb-1">My Note</p>
+                              <p className="text-sm text-slate-700 font-medium leading-relaxed">{bookmark.note}</p>
+                           </div>
+                         )}
+                      </div>
+                    ))
+                  )}
+               </div>
+            </section>
           {/* Badges Container */}
           <section className="rounded-[48px] bg-white border border-slate-200 p-10 shadow-sm space-y-8">
              <h3 className="text-xl font-bold tracking-tight">অর্জিত ব্যাজসমূহ (Badges)</h3>
@@ -123,6 +195,69 @@ export default function Profile() {
                      <span className="text-[10px] font-black uppercase tracking-widest text-center">{badge.name}</span>
                   </div>
                 ))}
+             </div>
+          </section>
+
+          {/* Favorite Hadiths */}
+          <section className="rounded-[48px] bg-white border border-slate-200 p-10 shadow-sm space-y-8">
+             <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold tracking-tight">Favorite Hadiths</h3>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase">{favoriteHadiths.length}</span>
+             </div>
+             
+             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                {loadingHadiths ? (
+                  <div className="text-center py-10 text-slate-400 animate-pulse">Loading favorites...</div>
+                ) : favoriteHadiths.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                     <p className="text-slate-400 font-medium">No saved hadiths yet</p>
+                  </div>
+                ) : (
+                  favoriteHadiths.map((h) => (
+                    <div key={h.id} className="group p-8 rounded-[40px] bg-emerald-50/30 border border-emerald-100 hover:border-emerald-300 transition-all space-y-6">
+                       <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{h.book}</p>
+                             <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-400">No. {h.hadithNumber}</span>
+                             </div>
+                          </div>
+                          <button 
+                            onClick={() => h.id && removeFavoriteHadith(h.id)}
+                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                             <Trash2 size={16} />
+                          </button>
+                       </div>
+
+                       <div className="space-y-6">
+                          {h.textAr && (
+                             <p className="text-2xl font-bold text-slate-900 leading-relaxed text-right font-arabic" dir="rtl">
+                                {h.textAr}
+                             </p>
+                          )}
+                          
+                          {h.textBn && (
+                             <div className="p-5 bg-white/50 rounded-2xl border border-emerald-100/50">
+                                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">বাংলা অনুবাদ</h4>
+                                <p className="text-slate-800 font-bold leading-relaxed font-bengali">
+                                  {h.textBn}
+                                </p>
+                             </div>
+                          )}
+
+                          <div className="pt-2">
+                            <h4 className="text-[9px] font-black text-slate-300 uppercase mb-1">English</h4>
+                            <p className="text-slate-600 font-medium leading-relaxed italic">"{h.text}"</p>
+                          </div>
+                       </div>
+                       
+                       <p className="text-[10px] font-medium text-slate-300 pt-4 border-t border-emerald-100/30 italic">
+                         {h.reference}
+                       </p>
+                    </div>
+                  ))
+                )}
              </div>
           </section>
 

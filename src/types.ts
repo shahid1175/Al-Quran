@@ -69,6 +69,29 @@ export interface Bookmark {
   createdAt: Date;
 }
 
+export interface Hadith {
+  id: string;
+  book: string;
+  hadithNumber: string;
+  text: string;
+  textBn?: string;
+  textAr?: string;
+  reference: string;
+}
+
+export interface FavoriteHadith {
+  id?: string;
+  userId: string;
+  hadithId: string;
+  book: string;
+  text: string;
+  textBn?: string;
+  textAr?: string;
+  hadithNumber: string;
+  reference: string;
+  createdAt: Date;
+}
+
 export interface LeaderboardEntry {
   userId: string;
   displayName: string;

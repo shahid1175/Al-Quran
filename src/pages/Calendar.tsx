@@ -93,6 +93,7 @@ export default function Calendar() {
         </div>
       </section>
 
+      {/* Main Content Grid */}
       <div className="grid gap-8 lg:grid-cols-12">
         {/* Calendar Grid */}
         <section className="lg:col-span-12 space-y-6">
@@ -101,7 +102,9 @@ export default function Calendar() {
                <button onClick={prevMonth} className="p-2 hover:bg-slate-200 rounded-xl transition-all">
                   <ChevronLeft size={20} />
                </button>
-               <h3 className="text-xl font-bold text-slate-900 min-w-[150px] text-center">{currentGregorianMonth}</h3>
+               <h3 className="text-xl font-bold text-slate-900 min-w-[200px] text-center">
+                 {hijriMode ? `${calendarDays[15].monthName} ${calendarDays[15].year} AH` : currentGregorianMonth}
+               </h3>
                <button onClick={nextMonth} className="p-2 hover:bg-slate-200 rounded-xl transition-all">
                   <ChevronRight size={20} />
                </button>
@@ -116,92 +119,97 @@ export default function Calendar() {
               ))}
             </div>
             
-            <div className="grid grid-cols-7 gap-2 md:gap-4">
-               {/* Padding for first day */}
-               {[...Array(calendarDays[0].gregorian.getDay())].map((_, i) => (
-                 <div key={`pad-${i}`} className="aspect-square" />
-               ))}
+          <div className="grid grid-cols-7 gap-2 md:gap-4">
+             {/* Padding for first day */}
+             {[...Array(calendarDays[0].gregorian.getDay())].map((_, i) => (
+               <div key={`pad-${i}`} className="aspect-square" />
+             ))}
+             
+             {calendarDays.map((day, idx) => {
+               const events = dayEvents(day);
+               const hasEvent = events.length > 0;
+               const isToday = day.gregorian.toDateString() === new Date().toDateString();
                
-               {calendarDays.map((day, idx) => {
-                 const events = dayEvents(day);
-                 const hasEvent = events.length > 0;
-                 const isToday = day.gregorian.toDateString() === new Date().toDateString();
-                 
-                 return (
-                   <button 
-                     key={idx}
-                     onClick={() => setSelectedDay(day)}
-                     className={cn(
-                       "aspect-square rounded-2xl md:rounded-3xl flex flex-col items-center justify-center relative transition-all group",
-                       isToday ? "bg-primary-900 text-white shadow-lg shadow-primary-900/20" : "bg-slate-50 hover:bg-primary-50",
-                       hasEvent && !isToday && "ring-2 ring-primary-100"
-                     )}
-                   >
-                     <span className={cn("text-xs md:text-sm font-black", isToday ? "text-white" : "text-slate-900 group-hover:text-primary-700")}>
-                        {day.gregorian.getDate()}
-                     </span>
-                     <span className={cn("text-[8px] md:text-[10px] font-bold opacity-50", isToday ? "text-primary-100" : "text-slate-400")}>
-                        {day.day}
-                     </span>
-                     
-                     {hasEvent && (
-                       <div className={cn(
-                         "absolute bottom-2 h-1.5 w-1.5 rounded-full",
-                         isToday ? "bg-primary-300" : "bg-primary-500"
-                       )} />
-                     )}
-                   </button>
-                 );
-               })}
-            </div>
+               return (
+                 <button 
+                   key={idx}
+                   onClick={() => setSelectedDay(day)}
+                   className={cn(
+                     "aspect-square rounded-2xl md:rounded-3xl flex flex-col items-center justify-center relative transition-all group",
+                     isToday ? "bg-primary-900 text-white shadow-lg shadow-primary-900/20" : "bg-slate-50 hover:bg-primary-50",
+                     hasEvent && !isToday && "ring-2 ring-primary-100"
+                   )}
+                 >
+                   <span className={cn("text-xs md:text-sm font-black", isToday ? "text-white" : "text-slate-900 group-hover:text-primary-700")}>
+                      {hijriMode ? day.day : day.gregorian.getDate()}
+                   </span>
+                   <span className={cn("text-[8px] md:text-[10px] font-bold opacity-50", isToday ? "text-primary-100" : "text-slate-400")}>
+                      {hijriMode ? day.gregorian.getDate() : day.day}
+                   </span>
+                   
+                   {hasEvent && (
+                     <div className={cn(
+                       "absolute bottom-2 h-1.5 w-1.5 rounded-full",
+                       isToday ? "bg-primary-300" : "bg-primary-500"
+                     )} />
+                   )}
+                 </button>
+               );
+             })}
+          </div>
           </div>
         </section>
 
-        {/* Detailed Event View or Search Results */}
-        <section className="lg:col-span-12">
-           <div className="flex items-center justify-between mb-6 px-4">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                {search ? "Search Results" : "Upcoming Events"}
-              </h3>
-              {!search && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Cycle</span>}
-           </div>
+        {/* Islamic Events & Upcoming Adjustments */}
+        <section className="lg:col-span-12 space-y-12 py-10">
+          <div className="text-center space-y-2">
+            <h2 className="text-4xl font-black text-slate-900 tracking-tight">Islamic Events</h2>
+            <p className="text-slate-400 font-medium">Important dates in the Islamic Calendar</p>
+          </div>
+          
+          {/* Upcoming Holiday Hero */}
+          <div className="bg-white rounded-[48px] border border-slate-100 p-12 text-center space-y-6 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em]">Upcoming Islamic Holiday</p>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">Waqf Al Arafa – Hajj in {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'United Kingdom'}</h3>
+            <p className="text-xl text-slate-500 font-medium">
+               <span className="text-slate-900">Tuesday, 26 May 2026</span>
+               <span className="mx-3 opacity-30">|</span>
+               <span className="text-emerald-700">9 Thul–Hijjah 1447</span>
+            </p>
+          </div>
 
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {(search ? filteredEvents : ISLAMIC_EVENTS).map((event, idx) => {
-                const isCurrentMonth = event.month === hijri.month;
-                return (
-                  <div 
-                    key={idx}
-                    className={cn(
-                      "p-8 rounded-[32px] border transition-all hover:border-primary-200",
-                      isCurrentMonth ? "bg-primary-50 border-primary-200" : "bg-white border-slate-200"
-                    )}
-                  >
-                    <div className="flex justify-between items-start mb-6">
-                      <div className={cn(
-                        "h-12 w-12 rounded-2xl flex items-center justify-center",
-                        isCurrentMonth ? "bg-primary-600 text-white" : "bg-slate-100 text-slate-600"
-                      )}>
-                        <Star size={24} fill={isCurrentMonth ? "currentColor" : "none"} />
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-black text-slate-900">{event.day} {HIJRI_MONTHS[event.month -1]}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Hijri Date</p>
-                      </div>
-                    </div>
-                    <h4 className="text-xl font-bold text-slate-800 mb-2">{event.name}</h4>
-                    <p className="text-sm text-slate-500 mb-4">{event.description}</p>
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Approx. Gregorian</span>
-                       <span className="text-xs font-bold text-slate-900">
-                          {/* We don't have exact gregorian for every event easily, but showing today's comparison works for recent events */}
-                          Calculated annually
-                       </span>
-                    </div>
+          <div className="grid gap-8 md:grid-cols-2">
+            {(search ? filteredEvents : [
+              { month: 'Jan', day: '16', name: 'Lailat al Miraj', date: 'Friday, 27 Rajab 1447' },
+              { month: 'Feb', day: '3', name: 'Laylat al Baraat', date: 'Tuesday, 15 Sha’ban 1447' },
+              { month: 'Feb', day: '18', name: 'Ramadan (start)', date: 'Wednesday, 01 Ramadhan 1447' },
+              { month: 'Mar', day: '20', name: 'Eid-Ul-Fitr (~)', date: 'Friday, 01 Shawwal 1447' },
+              { month: 'May', day: '26', name: 'Waqf Al Arafa - Hajj', date: 'Tuesday, 09 Thul-Hijjah 1447' },
+              { month: 'May', day: '27', name: 'Eid-Ul-Adha', date: 'Wednesday, 10 Thul-Hijjah 1447' }
+            ]).map((event, i) => (
+              <div key={i} className="flex items-center gap-6 p-6 bg-white rounded-3xl border border-slate-50 hover:border-emerald-100 transition-all group">
+                <div className="flex flex-col items-center w-20 shrink-0 bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden shadow-sm group-hover:bg-emerald-50 transition-colors">
+                  <div className="w-full bg-slate-900 py-1.5 text-center group-hover:bg-emerald-600 transition-colors">
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{event.month}</span>
                   </div>
-                );
-              })}
-           </div>
+                  <div className="py-3">
+                    <span className="text-3xl font-black text-slate-900 group-hover:text-emerald-700 transition-colors">{event.day}</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{'name' in event ? event.name : ''}</h4>
+                  <p className="text-sm font-bold text-slate-400">{'date' in event ? event.date : `${event.day} ${HIJRI_MONTHS[event.month - 1]}`}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center pt-8">
+            <button className="inline-flex items-center gap-2 text-emerald-600 font-black text-sm uppercase tracking-widest hover:gap-4 transition-all">
+              Show more Special Islamic Days
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </section>
       </div>
 

@@ -1,85 +1,198 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-/**
- * Browser-compatible arrayBuffer to base64
- */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+export interface IslamicBook {
+  title: string;
+  author: string;
+  description: string;
+  category: string;
+  relevance: string;
 }
 
 export const aiService = {
-  async analyzeRecitation(audioBuffer: ArrayBuffer, expectedText: string) {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
+  /**
+   * General purpose AI assistant for Islamic questions.
+   */
+  async askAI(prompt: string): Promise<string> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          systemInstruction: "You are an expert in Islamic studies, providing accurate, clear, and compassionate guidance based on authentic sources (Quran and Sunnah)."
+        }
+      });
+      return response.text || "I'm sorry, I couldn't generate a response.";
+    } catch (error) {
+      console.error("AI Assistant error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Explains a Quranic verse in simple terms.
+   */
+  async explainVerseSimple(verseText: string, language: string): Promise<string> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Explain the following Quranic verse in a simple way for a ${language} speaker: "${verseText}"`,
+        config: {
+          systemInstruction: "You are a teacher who explains the Quran to children and beginners. Use simple language and heartwarming examples."
+        }
+      });
+      return response.text || "No explanation available.";
+    } catch (error) {
+      console.error("Verse explanation error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search for authentic Islamic books using AI.
+   */
+  async searchIslamicBooks(query: string): Promise<IslamicBook[]> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Search for Islamic books related to: "${query}"`,
+        config: {
+          systemInstruction: `You are an expert librarian specializing in Islamic literature. 
+          Your goal is to help users find AUTHENTIC Islamic books.
+          
+          STRICT RULES:
+          1. ONLY return Islamic books. 
+          2. Return results as a JSON array of objects with keys: title, author, description, category, relevance.
+          3. If the query is non-Islamic, return an empty array.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                author: { type: Type.STRING },
+                description: { type: Type.STRING },
+                category: { type: Type.STRING },
+                relevance: { type: Type.STRING }
+              },
+              required: ["title", "author", "description", "category", "relevance"]
+            }
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) return [];
+      return JSON.parse(text) as IslamicBook[];
+    } catch (error) {
+      console.error("Book search failed:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Analyzes an audio recitation of a Quranic verse.
+   */
+  async analyzeRecitation(audioBuffer: ArrayBuffer, expectedText: string): Promise<any> {
+    try {
+      const base64Audio = btoa(
+        new Uint8Array(audioBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ''
+        )
+      );
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            text: `Analyze this Quranic recitation. The expected verse is: "${expectedText}". Evaluate the pronunciation, tajweed, and fluency.`
+          },
           {
             inlineData: {
               mimeType: "audio/wav",
-              data: arrayBufferToBase64(audioBuffer),
-            },
-          },
-          {
-            text: `Evaluate the tajweed of this recitation compared to the following verse: "${expectedText}". 
-            Identify specific mistakes: missed words, incorrect pronunciations, or skipped segments.
-            Return ONLY a JSON object with: 
-            - score (number 0-100)
-            - feedback (string in Bangla)
-            - mistakes (array of objects: { word: string, type: 'missed' | 'incorrect' | 'skipped', suggestion: string })
-            - tajweedCheck (object with rule names and status)`,
+              data: base64Audio
+            }
           }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+        ],
+        config: {
+          systemInstruction: "You are a master Quran teacher. Analyze the recitation and provide a score (0-100), feedback, and specific mistakes. Return ONLY valid JSON.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              score: { type: Type.NUMBER },
+              feedback: { type: Type.STRING },
+              mistakes: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    word: { type: Type.STRING },
+                    type: { type: Type.STRING, enum: ["incorrect", "missed", "hesitation"] },
+                    suggestion: { type: Type.STRING }
+                  },
+                  required: ["word", "type", "suggestion"]
+                }
+              },
+              tajweedCheck: {
+                type: Type.OBJECT,
+                additionalProperties: { type: Type.STRING }
+              }
+            },
+            required: ["score", "feedback", "mistakes"]
+          }
+        }
+      });
 
-    return JSON.parse(response.text || '{}');
+      const text = response.text;
+      return text ? JSON.parse(text) : { score: 70, feedback: "Analysis empty", mistakes: [] };
+    } catch (error) {
+      console.error("Recitation analysis failed:", error);
+      throw error;
+    }
   },
 
-  async searchVerseByVoice(audioBuffer: ArrayBuffer) {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: "audio/wav",
-              data: arrayBufferToBase64(audioBuffer),
+  /**
+   * Searches for a Quranic verse by voice input.
+   */
+  async searchVerseByVoice(audioBuffer: ArrayBuffer): Promise<any> {
+    try {
+      const base64Audio = btoa(
+        new Uint8Array(audioBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ''
+        )
+      );
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          { text: "Identify the Quranic verse being recited in this audio." },
+          { inlineData: { mimeType: "audio/wav", data: base64Audio } }
+        ],
+        config: {
+          systemInstruction: "Identify the Surah and Verse number. Return ONLY JSON.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              surahId: { type: Type.NUMBER },
+              ayahNumber: { type: Type.NUMBER },
+              verseText: { type: Type.STRING }
             },
-          },
-          {
-            text: `This is a recitation of a Quranic phrase. Transcribe it and identify the Surah number and Ayah number.
-            Return ONLY a JSON object with:
-            - transcribedText (string)
-            - surahNumber (number)
-            - ayahNumber (number)
-            - confidence (number 0-1)`
+            required: ["surahId", "ayahNumber"]
           }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+        }
+      });
 
-    return JSON.parse(response.text || '{}');
-  },
-
-  async explainVerseSimple(verseText: string, language: string = 'bangla') {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Explain this verse in a very simple way for beginners in ${language}: "${verseText}"`,
-    });
-    return response.text || "";
+      const text = response.text;
+      return text ? JSON.parse(text) : null;
+    } catch (error) {
+      console.error("Voice search failed:", error);
+      throw error;
+    }
   }
 };

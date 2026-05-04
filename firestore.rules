@@ -70,6 +70,25 @@ service cloud.firestore {
                  data.ayahId is int;
         }
       }
+
+      // --- Favorite Hadiths ---
+      match /favoriteHadiths/{favId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFavoriteHadith(incoming());
+        allow delete: if isOwner(userId);
+
+        function isValidFavoriteHadith(data) {
+          return data.userId == request.auth.uid &&
+                 data.hadithId is string &&
+                 data.hadithNumber is string &&
+                 data.book is string &&
+                 data.text is string &&
+                 (data.get('textBn', null) == null || data.textBn is string) &&
+                 (data.get('textAr', null) == null || data.textAr is string) &&
+                 data.reference is string &&
+                 data.createdAt == request.time;
+        }
+      }
     }
 
     // --- Leaderboard ---
