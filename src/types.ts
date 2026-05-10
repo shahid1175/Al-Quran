@@ -108,6 +108,14 @@ export type Surah = {
   revelationType: string;
 };
 
+export type AyahWord = {
+  id: number;
+  position: number;
+  text: string;
+  translationBn: string;
+  translationEn: string;
+};
+
 export type Ayah = {
   number: number;
   audio: string;
@@ -121,6 +129,7 @@ export type Ayah = {
   ruku: number;
   hizbQuarter: number;
   sajda: boolean | object;
+  words?: AyahWord[];
 };
 
 export type PrayerTimes = {

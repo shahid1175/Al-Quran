@@ -1,11 +1,21 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { BookOpen, ChevronLeft, Star, StarOff, Info, Play, Award } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BookOpen, ChevronLeft, Star, StarOff, Info, Play, Award, Sparkles, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { TAJWEED_RULES } from '../lib/tajweed';
+import { TAJWEED_RULES, TajweedRule } from '../lib/tajweed';
 import { cn } from '../lib/utils';
+import RecitationAnalyzer from '../components/RecitationAnalyzer';
+import TajweedRuleModal from '../components/TajweedRuleModal';
 
 export default function TajweedLessons() {
+  const [practiceVerse, setPracticeVerse] = useState<string | null>(null);
+  const [activeRule, setActiveRule] = useState<TajweedRule | null>(null);
+
+  const startPractice = (verse: string) => {
+    setPracticeVerse(verse);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-24">
       {/* Header */}
@@ -22,19 +32,54 @@ export default function TajweedLessons() {
       </header>
 
       {/* Hero Welcome */}
-      <section className="rounded-[48px] bg-gradient-to-br from-orange-400 to-orange-600 p-10 text-white shadow-2xl shadow-orange-500/20 relative overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="relative z-10 space-y-6">
-           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold border border-white/20">
-              <Award size={16} />
-              <span>Free for everyone</span>
-           </div>
-           <h2 className="text-4xl md:text-5xl font-black leading-tight">সহজ বাংলা ভাষায় তাজবীদ শিখন</h2>
-           <p className="text-xl text-orange-50/80 max-w-xl font-medium">
-             কুরআন সঠিকভাবে তিলাওয়াত করার জন্য তাজবীদ জানা অত্যন্ত গুরুত্বপূর্ণ। এখানে আমরা প্রধান নিয়মগুলো ব্যাখ্যা করেছি।
-           </p>
-        </div>
-      </section>
+      {!practiceVerse && (
+        <section className="rounded-[48px] bg-gradient-to-br from-orange-400 to-orange-600 p-10 text-white shadow-2xl shadow-orange-500/20 relative overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+          <div className="relative z-10 space-y-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold border border-white/20">
+                <Award size={16} />
+                <span>Free for everyone</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black leading-tight">সহজ বাংলা ভাষায় তাজবীদ শিখন</h2>
+            <p className="text-xl text-orange-50/80 max-w-xl font-medium">
+              কুরআন সঠিকভাবে তিলাওয়াত করার জন্য তাজবীদ জানা অত্যন্ত গুরুত্বপূর্ণ। এখানে আমরা প্রধান নিয়মগুলো ব্যাখ্যা করেছি।
+            </p>
+            <button 
+              onClick={() => startPractice("اَهْدِنَا الصِّرَاطَ الْمُسْتَقِيْمَ")}
+              className="px-8 py-4 bg-white text-orange-600 rounded-2xl font-black flex items-center gap-3 shadow-xl hover:bg-orange-50 transition-all active:scale-95"
+            >
+              <Mic size={20} />
+              AI দিয়ে তিলাওয়াত যাচাই করুন
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* AI Practice Lab - Shows when requested */}
+      <AnimatePresence>
+        {practiceVerse && (
+          <motion.section
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                <Sparkles size={20} className="text-emerald-600" />
+                AI প্র্যাকটিস ল্যাব
+              </h3>
+              <button 
+                onClick={() => setPracticeVerse(null)}
+                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                বন্ধ করুন (Close)
+              </button>
+            </div>
+            <RecitationAnalyzer initialVerse={practiceVerse} />
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Rules Grid */}
       <div className="grid gap-8">
@@ -73,10 +118,22 @@ export default function TajweedLessons() {
                           <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">উদাহরণ (Example)</h4>
                           <p className="text-3xl font-serif text-right text-slate-900" style={{ direction: 'rtl' }}>{rule.example}</p>
                        </div>
-                       <button className="flex items-center justify-center gap-3 bg-slate-900 text-white rounded-3xl p-6 font-bold hover:bg-slate-800 transition-colors">
-                          <Play size={20} fill="currentColor" />
-                          <span>শুনুন (Listen)</span>
-                       </button>
+                       <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => setActiveRule(rule)}
+                            className="flex items-center justify-center gap-3 bg-slate-100 text-slate-900 rounded-3xl p-4 font-bold hover:bg-slate-200 transition-colors"
+                          >
+                             <Play size={18} fill="currentColor" />
+                             <span className="text-sm">শুনুন</span>
+                          </button>
+                          <button 
+                            onClick={() => startPractice(rule.example)}
+                            className="flex items-center justify-center gap-3 bg-emerald-600 text-white rounded-3xl p-4 font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
+                          >
+                             <Mic size={18} />
+                             <span className="text-sm">পরীক্ষা করুন</span>
+                          </button>
+                       </div>
                     </div>
                  </div>
               </div>
@@ -95,6 +152,15 @@ export default function TajweedLessons() {
           কুইজ শুরু করুন
         </button>
       </section>
+
+      <AnimatePresence>
+        {activeRule && (
+          <TajweedRuleModal 
+            rule={activeRule} 
+            onClose={() => setActiveRule(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

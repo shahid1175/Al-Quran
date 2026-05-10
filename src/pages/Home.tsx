@@ -9,6 +9,7 @@ import { quranService } from '../services/quranService';
 import { hadithService } from '../services/hadithService';
 import { getHijriDate, getNextEvent } from '../services/calendarService';
 import { Ayah, Hadith } from '../types';
+import { parseTajweed } from '../lib/tajweed';
 
 export default function Home() {
   const { profile } = useAuth();
@@ -119,9 +120,11 @@ export default function Home() {
             </div>
             {dailyAyah ? (
                <div className="space-y-8">
-                  <p className="text-4xl font-arabic text-right leading-[3.5rem] text-slate-900 font-serif" style={{ direction: 'rtl' }}>
-                    {dailyAyah.ayah.text}
-                  </p>
+                  <p 
+                    className="text-4xl font-arabic text-right leading-[3.5rem] text-slate-900 font-serif" 
+                    style={{ direction: 'rtl' }}
+                    dangerouslySetInnerHTML={{ __html: parseTajweed(dailyAyah.ayah.tajweed || dailyAyah.ayah.text) }}
+                  />
                   <div className="p-6 bg-primary-50 rounded-2xl border border-primary-100">
                     <h4 className="text-xs font-bold text-primary-800 mb-2 uppercase tracking-wide">Translation</h4>
                     <p className="text-primary-950 font-medium leading-relaxed italic">"{dailyAyah.translation}"</p>

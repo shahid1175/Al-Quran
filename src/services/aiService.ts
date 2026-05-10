@@ -50,21 +50,68 @@ export const aiService = {
   },
 
   /**
-   * Search for authentic Islamic books using AI.
+   * Fetches detailed information about a specific book with Bengali support.
+   */
+  async getBookDetails(title: string, author: string): Promise<{ fullDescription: string; regionsCovered: string[]; targetAudience: string[]; keyTopics: string[] }> {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Provide deep insights for the Islamic book: "${title}" by ${author}. Please provide the full description and topics in Bengali.`,
+        config: {
+          systemInstruction: `You are an expert Islamic bibliographer. 
+          Provide a detailed JSON response for the requested book.
+          IMPORTANT: The 'fullDescription', 'regionsCovered', 'targetAudience', and 'keyTopics' MUST be written in BENGALI (বাংলা).
+          
+          Include:
+          - fullDescription: A rich, 3-paragraph explanation of the book's impact and content.
+          - regionsCovered: List of geographical or cultural areas where this book is most influential.
+          - targetAudience: Who should read this (e.g., Beginners, Advanced Scholars).
+          - keyTopics: Top 5 specific chapters or subjects discussed in the book.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              fullDescription: { type: Type.STRING },
+              regionsCovered: { type: Type.ARRAY, items: { type: Type.STRING } },
+              targetAudience: { type: Type.ARRAY, items: { type: Type.STRING } },
+              keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["fullDescription", "regionsCovered", "targetAudience", "keyTopics"]
+          }
+        }
+      });
+
+      const text = response.text;
+      return text ? JSON.parse(text) : { 
+        fullDescription: "বিস্তারিত তথ্য এই মুহূর্তে পাওয়া যাচ্ছে না।", 
+        regionsCovered: [], 
+        targetAudience: [], 
+        keyTopics: [] 
+      };
+    } catch (error) {
+      console.error("Failed to fetch book details:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search for authentic Islamic books using AI with Bengali support.
    */
   async searchIslamicBooks(query: string): Promise<IslamicBook[]> {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Search for Islamic books related to: "${query}"`,
+        contents: `Search for Islamic books related to: "${query}". Provide the response details in Bengali primarily, with English in parentheses if needed.`,
         config: {
           systemInstruction: `You are an expert librarian specializing in Islamic literature. 
-          Your goal is to help users find AUTHENTIC Islamic books.
+          Your goal is to help users find AUTHENTIC Islamic books (Quran tafsir, Hadith collections, Fiqh, Seerah, Islamic history, Spirituality, etc.).
           
           STRICT RULES:
-          1. ONLY return Islamic books. 
-          2. Return results as a JSON array of objects with keys: title, author, description, category, relevance.
-          3. If the query is non-Islamic, return an empty array.`,
+          1. ONLY return Islamic books. If a query is for a non-Islamic book or a general topic not related to Islam, return an empty array.
+          2. Return results as a JSON array of objects.
+          3. For each book, provide: Title, Author, Description, Category, and Relevance.
+          4. IMPORTANT: Write 'title', 'description', 'author', and 'relevance' in BENGALI (বাংলা). You can include the English name in brackets.
+          5. Category should be in English (e.g., Tafsir, Hadith).`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
@@ -108,17 +155,28 @@ export const aiService = {
         model: "gemini-3-flash-preview",
         contents: [
           {
-            text: `Analyze this Quranic recitation. The expected verse is: "${expectedText}". Evaluate the pronunciation, tajweed, and fluency.`
+            text: `Please listen to this Quranic recitation and compare it with the following verse text: "${expectedText}". 
+            Evaluate the pronunciation (Makhraj), Tajweed rules (like Ghunnah, Qalqalah, Madd), and overall fluency.`
           },
           {
             inlineData: {
-              mimeType: "audio/wav",
+              mimeType: "audio/flac", // Use flac or wav, most recorders use wav but flac is often better for AI
               data: base64Audio
             }
           }
         ],
         config: {
-          systemInstruction: "You are a master Quran teacher. Analyze the recitation and provide a score (0-100), feedback, and specific mistakes. Return ONLY valid JSON.",
+          systemInstruction: `You are a world-class Quran teacher (Qari). Your goal is to guide students in perfecting their recitation.
+          Provide a score from 0 to 100 based on accuracy.
+          IMPORTANT: All textual feedback, suggestions, and rule names MUST be in BENGALI (বাংলা).
+          
+          Guidelines:
+          - score: Overall performance mark.
+          - feedback: A helpful summary of the recitation in Bengali.
+          - mistakes: Array of specific errors. Each has 'word' (the Arabic word), 'type' (incorrect, missed, hesitation), and 'suggestion' (in Bengali).
+          - tajweedCheck: An object where keys are Tajweed rule names in Bengali (e.g., "গুন্নাহ", "কলকলাহ", "মাখরাজ") and values are performance labels in Bengali (e.g., "সঠিক", "ভালো", "উন্নতি প্রয়োজন").
+          
+          Return ONLY valid JSON.`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -131,7 +189,7 @@ export const aiService = {
                   type: Type.OBJECT,
                   properties: {
                     word: { type: Type.STRING },
-                    type: { type: Type.STRING, enum: ["incorrect", "missed", "hesitation"] },
+                    type: { type: Type.STRING }, // removed enum for more flexibility
                     suggestion: { type: Type.STRING }
                   },
                   required: ["word", "type", "suggestion"]
@@ -142,13 +200,18 @@ export const aiService = {
                 additionalProperties: { type: Type.STRING }
               }
             },
-            required: ["score", "feedback", "mistakes"]
+            required: ["score", "feedback", "mistakes", "tajweedCheck"]
           }
         }
       });
 
       const text = response.text;
-      return text ? JSON.parse(text) : { score: 70, feedback: "Analysis empty", mistakes: [] };
+      return text ? JSON.parse(text) : { 
+        score: 0, 
+        feedback: "বিশ্লেষণ করা সম্ভব হয়নি।", 
+        mistakes: [], 
+        tajweedCheck: { "তাজবীদ": "অজানা" } 
+      };
     } catch (error) {
       console.error("Recitation analysis failed:", error);
       throw error;

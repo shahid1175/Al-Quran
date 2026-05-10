@@ -32,8 +32,47 @@ export default function Calendar() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
-  const dayEvents = (day: HijriDate) => {
-    return ISLAMIC_EVENTS.filter(e => e.day === day.day && e.month === day.month);
+  const handleEventClick = (event: any) => {
+    const months: Record<string, number> = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+
+    let targetDate: Date;
+    if (typeof event.month === 'string' && months[event.month] !== undefined) {
+      // Use 2026 as the base year for these events
+      targetDate = new Date(2026, months[event.month], parseInt(event.day));
+    } else {
+      return;
+    }
+
+    setCurrentDate(targetDate);
+    
+    // Get hijri info for the target date
+    const hInfo = getHijriDate(targetDate);
+    
+    // Try to match event by name to handle Hijri date shifts
+    const matchedEvent = ISLAMIC_EVENTS.find(e => 
+      event.name && (e.name.toLowerCase().includes(event.name.toLowerCase()) || event.name.toLowerCase().includes(e.name.toLowerCase()))
+    );
+
+    setSelectedDay({
+      ...hInfo,
+      gregorian: targetDate,
+      // @ts-ignore - adding a hint for the modal
+      forceEvent: matchedEvent
+    });
+
+    setHijriMode(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const dayEvents = (day: any) => {
+    const events = ISLAMIC_EVENTS.filter(e => e.day === day.day && e.month === day.month);
+    if (events.length === 0 && day.forceEvent) {
+      return [day.forceEvent];
+    }
+    return events;
   };
 
   const currentGregorianMonth = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -168,26 +207,33 @@ export default function Calendar() {
           </div>
           
           {/* Upcoming Holiday Hero */}
-          <div className="bg-white rounded-[48px] border border-slate-100 p-12 text-center space-y-6 shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em]">Upcoming Islamic Holiday</p>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">Waqf Al Arafa – Hajj in {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'United Kingdom'}</h3>
+            <button 
+              onClick={() => handleEventClick({ month: 'May', day: '26', name: 'Day of Arafah' })}
+              className="w-full bg-white rounded-[48px] border border-slate-100 p-12 text-center space-y-6 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all active:scale-[0.98] group"
+            >
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] group-hover:tracking-[0.4em] transition-all">Upcoming Islamic Holiday</p>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight group-hover:text-emerald-700 transition-colors">Waqf Al Arafa – Hajj</h3>
             <p className="text-xl text-slate-500 font-medium">
                <span className="text-slate-900">Tuesday, 26 May 2026</span>
                <span className="mx-3 opacity-30">|</span>
-               <span className="text-emerald-700">9 Thul–Hijjah 1447</span>
+               <span className="text-emerald-700">09 Dhu al-Hijjah 1447</span>
             </p>
-          </div>
+          </button>
 
           <div className="grid gap-8 md:grid-cols-2">
             {(search ? filteredEvents : [
-              { month: 'Jan', day: '16', name: 'Lailat al Miraj', date: 'Friday, 27 Rajab 1447' },
-              { month: 'Feb', day: '3', name: 'Laylat al Baraat', date: 'Tuesday, 15 Sha’ban 1447' },
-              { month: 'Feb', day: '18', name: 'Ramadan (start)', date: 'Wednesday, 01 Ramadhan 1447' },
-              { month: 'Mar', day: '20', name: 'Eid-Ul-Fitr (~)', date: 'Friday, 01 Shawwal 1447' },
-              { month: 'May', day: '26', name: 'Waqf Al Arafa - Hajj', date: 'Tuesday, 09 Thul-Hijjah 1447' },
-              { month: 'May', day: '27', name: 'Eid-Ul-Adha', date: 'Wednesday, 10 Thul-Hijjah 1447' }
+              { month: 'Feb', day: '15', name: 'Isra and Mi\'raj (Lailat al Miraj)', date: 'Sunday, 27 Rajab 1447' },
+              { month: 'Mar', day: '4', name: 'Laylat al-Baraat', date: 'Wednesday, 15 Sha’ban 1447' },
+              { month: 'Mar', day: '20', name: 'Ramadan Begins', date: 'Friday, 01 Ramadan 1447' },
+              { month: 'Apr', day: '19', name: 'Eid al-Fitr', date: 'Sunday, 01 Shawwal 1447' },
+              { month: 'May', day: '26', name: 'Day of Arafah (Waqf Al Arafa)', date: 'Tuesday, 09 Dhu al-Hijjah 1447' },
+              { month: 'May', day: '27', name: 'Eid al-Adha', date: 'Wednesday, 10 Dhu al-Hijjah 1447' }
             ]).map((event, i) => (
-              <div key={i} className="flex items-center gap-6 p-6 bg-white rounded-3xl border border-slate-50 hover:border-emerald-100 transition-all group">
+              <button 
+                key={i} 
+                onClick={() => handleEventClick(event)}
+                className="flex items-center text-left gap-6 p-6 bg-white rounded-3xl border border-slate-50 hover:border-emerald-100 transition-all group hover:shadow-xl hover:shadow-emerald-500/5 active:scale-95"
+              >
                 <div className="flex flex-col items-center w-20 shrink-0 bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden shadow-sm group-hover:bg-emerald-50 transition-colors">
                   <div className="w-full bg-slate-900 py-1.5 text-center group-hover:bg-emerald-600 transition-colors">
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">{event.month}</span>
@@ -200,7 +246,7 @@ export default function Calendar() {
                   <h4 className="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{'name' in event ? event.name : ''}</h4>
                   <p className="text-sm font-bold text-slate-400">{'date' in event ? event.date : `${event.day} ${HIJRI_MONTHS[event.month - 1]}`}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -254,7 +300,7 @@ export default function Calendar() {
                    ) : (
                      <div className="p-12 text-center border-2 border-dashed border-slate-100 rounded-[32px]">
                         <Info className="mx-auto text-slate-200 mb-4" size={48} />
-                        <p className="text-slate-400 font-medium">No major Islamic events on this day.</p>
+                        <p className="text-slate-400 font-medium">আজকের দিনে বড় কোনো ইসলামী দিবস বা উৎসব নেই। তবে প্রতিটি দিনই ইবাদত ও আল্লাহর নৈকট্য লাভের জন্য গুরুত্বপূর্ণ।</p>
                      </div>
                    )}
                 </div>

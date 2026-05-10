@@ -7,16 +7,72 @@ export interface IslamicEvent {
 }
 
 export const ISLAMIC_EVENTS: IslamicEvent[] = [
-  { name: 'Isra and Mi\'raj', day: 27, month: 7, description: 'The Prophet\'s Night Journey and Ascension' },
-  { name: 'Ramadan Begins', day: 1, month: 9, description: 'Month of Fasting' },
-  { name: 'Laylat al-Qadr', day: 27, month: 9, description: 'The Night of Power' },
-  { name: 'Eid al-Fitr', day: 1, month: 10, description: 'Festival of Breaking the Fast' },
-  { name: 'Hajj Season Begins', day: 8, month: 12, description: 'Annual Pilgrimage to Mecca' },
-  { name: 'Day of Arafah', day: 9, month: 12, description: 'The peak of Hajj' },
-  { name: 'Eid al-Adha', day: 10, month: 12, description: 'Festival of Sacrifice' },
-  { name: 'Islamic New Year', day: 1, month: 1, description: '1st of Muharram' },
-  { name: 'Ashura', day: 10, month: 1, description: 'Day of Remembrance' },
-  { name: 'Mawlid al-Nabi', day: 12, month: 3, description: 'Birth of the Prophet' }
+  { 
+    name: 'Islamic New Year', 
+    day: 1, 
+    month: 1, 
+    description: 'হিজরি নববর্ষ - মহররম মাসের প্রথম দিন। এটি ইসলামী বর্ষপঞ্জির সূচনা এবং মুসলিম উম্মাহর জন্য একটি নতুন শুরুর দিন।' 
+  },
+  { 
+    name: 'Ashura', 
+    day: 10, 
+    month: 1, 
+    description: 'পবিত্র আশুরা - ইসলামের ইতিহাসে মহিমান্বিত একটি দিন। এই দিনে মুসা (আ.) ও তাঁর কওম ফেরাউনের হাত থেকে মুক্তি পেয়েছিলেন। ১০ই মহররম কারবালার শোকাবহ স্মৃতিও মুসলিমরা স্মরণ করেন।' 
+  },
+  { 
+    name: 'Mawlid al-Nabi', 
+    day: 12, 
+    month: 3, 
+    description: 'ঈদে মিলাদুন্নবী - ১২ই রবিউল আউয়াল মহানবী হযরত মুহাম্মদ (সা.)-এর জগত সংসারে আগমনের পবিত্র ও আনন্দঘন দিন।' 
+  },
+  { 
+    name: 'Isra and Mi\'raj (Lailat al Miraj)', 
+    day: 27, 
+    month: 7, 
+    description: 'লাইলাতুল মেরাজ - নবী কারীম (সা.)-এর উর্ধ্বাকাশ গমনের মহিমান্বিত রজনী। এই রাতে মহান আল্লাহ তাঁর প্রিয় নবীকে পাঁচ ওয়াক্ত নামাজ উপহার দিয়েছিলেন।' 
+  },
+  { 
+    name: 'Laylat al-Baraat', 
+    day: 15, 
+    month: 8, 
+    description: 'শবে বরাত - লাইলাতুল বরাত হলো মুক্তির রাত। এই রাতে আল্লাহ তাআলা অসংখ্য মানুষকে ক্ষমা করেন এবং বান্দার রিজিক ও ভাগ্য নির্ধারণ করা হয়।' 
+  },
+  { 
+    name: 'Ramadan Begins', 
+    day: 1, 
+    month: 9, 
+    description: 'পবিত্র রমজানের শুরু - রহমত, মাগফিরাত ও নাজাতের মাস। এই মাসে কুরআন নাযিল হয়েছে এবং মুমিনদের জন্য সিয়াম পালন বাধ্যতামূলক করা হয়েছে।' 
+  },
+  { 
+    name: 'Laylat al-Qadr', 
+    day: 27, 
+    month: 9, 
+    description: 'লাইলাতুল কদর - হাজার মাসের চেয়ে উত্তম এক রজনী। এই রাতে পবিত্র কুরআন অবতীর্ণের সূচনা হয়েছে।' 
+  },
+  { 
+    name: 'Eid al-Fitr', 
+    day: 1, 
+    month: 10, 
+    description: 'পবিত্র ঈদুল ফিতর - রমজানের দীর্ঘ সিয়াম সাধনার পর খুশির বার্তা নিয়ে আসে। এই দিন মুমিন বান্দারা আল্লাহর পক্ষ থেকে মহিমান্বিত পুরস্কার এবং অফুরন্ত আনন্দের অনুভব করেন।' 
+  },
+  { 
+    name: 'Hajj Season Begins', 
+    day: 8, 
+    month: 12, 
+    description: 'হজ্জ হেক্সা বা এহরামের দিন - মুসলিম উম্মাহর বিশ্ব সম্মেলন বা হজ্জের মূল আনুষ্ঠানিকতা শুরুর সময়।' 
+  },
+  { 
+    name: 'Day of Arafah (Waqf Al Arafa)', 
+    day: 9, 
+    month: 12, 
+    description: 'আরাফাতের দিন (ওয়াকফ আল আরাফা) - এটি হজ্জের সবচেয়ে গুরুত্বপূর্ণ অংশ। এই দিনে দুআ কবুলের বিশেষ সুযোগ থাকে এবং আল্লাহ তাআলা অসংখ্য মানুষকে জাহান্নাম থেকে মুক্তি দেন।' 
+  },
+  { 
+    name: 'Eid al-Adha', 
+    day: 10, 
+    month: 12, 
+    description: 'পবিত্র ঈদুল আদহা - ইসলামের ত্যাগের মহিমান্বিত একটি দিন। কুরবানীর মাধ্যমে আল্লাহর সন্তুষ্টি অর্জনের বিশেষ সময় এবং বিশ্বব্যাপী মুসলিম ভ্রাতৃত্বের উৎসব।' 
+  }
 ];
 
 export const HIJRI_MONTHS = [

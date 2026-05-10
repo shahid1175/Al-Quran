@@ -29,11 +29,12 @@ function getDB() {
 }
 
 export const storageService = {
-  async saveSurah(id: number, ayahs: Ayah[], audioBlobs?: { [ayahNumber: number]: Blob }) {
+  async saveSurah(id: number, ayahs: Ayah[], translations?: any[], audioBlobs?: { [ayahNumber: number]: Blob }) {
     const db = await getDB();
     const offlineSurah: OfflineSurah = {
       id,
       ayahs,
+      translations,
       downloadedAt: Date.now(),
       audioBlobs
     };

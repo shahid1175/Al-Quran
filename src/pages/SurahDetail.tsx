@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Play, Pause, Bookmark, Info, Settings, Languages, Type, MessageSquare, GraduationCap, Download, CheckCircle, Trash2, RefreshCw, BookOpen, EyeOff, Eye, X, Search, Mic, Square, Share2, Sliders, Volume2, Save, Sparkles } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Bookmark, Info, Settings, Languages, Type, MessageSquare, GraduationCap, Download, CheckCircle, Trash2, RefreshCw, BookOpen, EyeOff, Eye, X, Search, Mic, Square, Share2, Sliders, Volume2, Save, Sparkles, Hash, Columns } from 'lucide-react';
 import { quranService } from '../services/quranService';
 import { aiService } from '../services/aiService';
 import { bookmarkService } from '../services/bookmarkService';
@@ -11,40 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { storageService } from '../services/storageService';
 import { parseTajweed, TAJWEED_RULES, TajweedRule } from '../lib/tajweed';
 
-function TajweedRuleModal({ rule, onClose }: { rule: TajweedRule, onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden"
-      >
-        <div className={cn("absolute top-0 right-0 h-32 w-32 blur-3xl opacity-20 rounded-full -mr-16 -mt-16", rule.color)} />
-        <button onClick={onClose} className="absolute right-6 top-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 z-10 transition-colors">
-          <X size={24} />
-        </button>
-        
-        <div className="relative z-10 space-y-6">
-          <div className={cn("h-16 w-16 rounded-[24px] flex items-center justify-center text-white shadow-lg", rule.color)}>
-            <BookOpen size={32} />
-          </div>
-          <div>
-            <h3 className="text-3xl font-black text-slate-900 mb-1">{rule.label}</h3>
-            <p className="text-lg text-primary-600 font-bold">{rule.description}</p>
-          </div>
-          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">ব্যাখ্যা (Explanation)</h4>
-            <p className="text-slate-700 leading-relaxed font-medium">{rule.explanation}</p>
-          </div>
-          <div className="bg-slate-900 p-6 rounded-3xl border border-white/10 group">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">উদাহরণ (Example)</h4>
-            <p className="text-4xl font-serif text-right text-white" style={{ direction: 'rtl' }}>{rule.example}</p>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
+import TajweedRuleModal from '../components/TajweedRuleModal';
 
 export default function SurahDetail() {
   const { id } = useParams();
@@ -58,7 +25,8 @@ export default function SurahDetail() {
   const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   
   const [showTranslation, setShowTranslation] = useState(true);
-  const [tajweedMode, setTajweedMode] = useState(false);
+  const [wordByWordMode, setWordByWordMode] = useState(false);
+  const [tajweedMode, setTajweedMode] = useState(true);
   const [memorizeMode, setMemorizeMode] = useState(false);
   const [verseSearch, setVerseSearch] = useState("");
   const [revealedVerses, setRevealedVerses] = useState<number[]>([]);
@@ -66,6 +34,8 @@ export default function SurahDetail() {
   const [recordingAyahId, setRecordingAyahId] = useState<number | null>(null);
   const [analyzingAyahId, setAnalyzingAyahId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showJumpModal, setShowJumpModal] = useState(false);
+  const [jumpVerse, setJumpVerse] = useState("");
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [bookmarkingAyah, setBookmarkingAyah] = useState<Ayah | null>(null);
   const [bookmarkNote, setBookmarkNote] = useState("");
@@ -131,9 +101,23 @@ export default function SurahDetail() {
         quranService.getSurah(parseInt(id), reciter),
         quranService.getTranslation(parseInt(id), 'bn'),
         quranService.getTranslation(parseInt(id), 'en'),
-        quranService.isDownloaded(parseInt(id))
-      ]).then(([a, tBn, tEn, d]) => {
-        setAyahs(a);
+        quranService.isDownloaded(parseInt(id)),
+        quranService.getWords(parseInt(id))
+      ]).then(([a, tBn, tEn, d, w]) => {
+        const ayahsWithWords = a.map(ayah => {
+          const words = w[ayah.numberInSurah] || [];
+          // Split tajweed text by spaces to align with words
+          const tajweedWords = (ayah.tajweed || "").split(/\s+/);
+          
+          return {
+            ...ayah,
+            words: words.map((word, wIdx) => ({
+              ...word,
+              tajweed: tajweedWords[wIdx] || word.text
+            }))
+          };
+        });
+        setAyahs(ayahsWithWords);
         setTranslations(tBn);
         setTranslationsEn(tEn);
         setIsDownloaded(d);
@@ -229,6 +213,25 @@ export default function SurahDetail() {
     setShowBookmarkModal(true);
   };
 
+  const handleJump = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const num = parseInt(jumpVerse);
+    if (!isNaN(num) && num > 0 && num <= ayahs.length) {
+      const element = verseRefs.current[num];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setSearchHighlightedId(num);
+        setShowJumpModal(false);
+        setJumpVerse("");
+        
+        const timer = setTimeout(() => {
+          setSearchHighlightedId(null);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  };
+
   const confirmBookmark = async () => {
     if (!user || !bookmarkingAyah) return;
     try {
@@ -317,7 +320,13 @@ export default function SurahDetail() {
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
                Surah {id}
             </h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Bismillahir Rahmanir Rahim</p>
+            <button 
+              onClick={() => setShowJumpModal(true)}
+              className="text-[10px] text-primary-600 font-black uppercase tracking-widest hover:text-primary-700 transition-colors flex items-center gap-1"
+            >
+              <Hash size={10} />
+              Jump to Ayah
+            </button>
           </div>
         </div>
         
@@ -356,6 +365,17 @@ export default function SurahDetail() {
                  <div className="w-2 h-2 rounded-full bg-blue-400" />
               </div>
               <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block">Tajweed</span>
+            </button>
+            <button 
+              onClick={() => setWordByWordMode(!wordByWordMode)}
+              className={cn(
+                "p-2.5 rounded-xl transition-all flex items-center gap-2", 
+                wordByWordMode ? "bg-emerald-50 text-emerald-600 shadow-sm" : "text-slate-400 hover:bg-slate-200"
+              )}
+              title="Toggle Word by Word translation"
+            >
+              <Columns size={20} />
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block">Word</span>
             </button>
             <button 
               onClick={handleDownload}
@@ -476,15 +496,44 @@ export default function SurahDetail() {
                     }
                   }}
                 >
-                  <p className={cn(
-                    "text-right leading-[4.5rem] font-serif transition-all",
-                    font === 'madani' ? "text-4xl" : "text-3xl",
-                    searchHighlightedId === ayah.numberInSurah ? "text-primary-900" : "text-slate-900",
-                    memorizeMode && !isRevealed && "blur-2xl hover:blur-none transition-[filter] duration-700 cursor-help select-none"
-                  )} 
-                  style={{ direction: 'rtl', fontSize: `32px` }}
-                  dangerouslySetInnerHTML={{ __html: tajweedMode && ayah.tajweed ? parseTajweed(ayah.tajweed) : ayah.text }}
-                  />
+                  <div 
+                    className={cn(
+                      "flex flex-wrap gap-x-4 gap-y-8 justify-end transition-all",
+                      memorizeMode && !isRevealed && "blur-2xl hover:blur-none transition-[filter] duration-700 cursor-help select-none"
+                    )}
+                    style={{ direction: 'rtl' }}
+                  >
+                    {wordByWordMode && ayah.words ? (
+                      ayah.words.map((word) => (
+                        <div key={word.id} className="flex flex-col items-center gap-1 group/word">
+                          <span 
+                            className={cn(
+                              "font-serif transition-all text-slate-900 group-hover/word:text-emerald-600",
+                              font === 'madani' ? "text-4xl" : "text-3xl"
+                            )}
+                            dangerouslySetInnerHTML={{ __html: tajweedMode && word.tajweed ? parseTajweed(word.tajweed) : word.text }}
+                          />
+                          <div className="flex flex-col items-center gap-1" style={{ direction: 'ltr' }}>
+                            <span className="text-sm font-bangla text-emerald-700 font-bold leading-tight group-hover/word:text-emerald-500 transition-colors">
+                              {word.translationBn}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium group-hover/word:text-slate-500 transition-colors">
+                              {word.translationEn}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className={cn(
+                        "leading-[4.5rem] font-serif transition-all",
+                        font === 'madani' ? "text-4xl" : "text-3xl",
+                        searchHighlightedId === ayah.numberInSurah ? "text-primary-900" : "text-slate-900"
+                      )} 
+                      style={{ fontSize: `32px` }}
+                      dangerouslySetInnerHTML={{ __html: tajweedMode && ayah.tajweed ? parseTajweed(ayah.tajweed) : ayah.text }}
+                      />
+                    )}
+                  </div>
                   
                   {memorizeMode && !isRevealed && (
                     <div className="flex justify-center pt-4">
@@ -524,12 +573,12 @@ export default function SurahDetail() {
                     </button>
                   )}
                   
-                  {showTranslation && translations[idx] && (
+                  {showTranslation && (
                     <div className="space-y-3 border-t border-slate-50 pt-8">
                        <p className="text-xl text-slate-900 leading-relaxed font-bangla font-medium">
-                         {translations[idx].text}
+                         {translations[idx]?.text || translationsEn[idx]?.text || "অনুবাদ পাওয়া যায়নি (Translation not found)"}
                        </p>
-                       {translationsEn[idx] && (
+                       {translationsEn[idx]?.text && translations[idx]?.text && (
                          <p className="text-sm text-slate-400 italic">
                             "{translationsEn[idx].text}"
                          </p>
@@ -714,6 +763,57 @@ export default function SurahDetail() {
                    </Link>
                 </div>
              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Jump to Verse Modal */}
+      <AnimatePresence>
+        {showJumpModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-xs bg-white rounded-[40px] p-8 shadow-2xl space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center mx-auto">
+                  <Hash size={24} />
+                </div>
+                <h3 className="text-xl font-black text-slate-900">Go to Verse</h3>
+                <p className="text-xs text-slate-400 font-medium">Enter verse number (1-{ayahs.length})</p>
+              </div>
+
+              <form onSubmit={handleJump} className="space-y-4">
+                <input 
+                  autoFocus
+                  type="number" 
+                  min="1" 
+                  max={ayahs.length}
+                  placeholder="e.g. 5"
+                  value={jumpVerse}
+                  onChange={(e) => setJumpVerse(e.target.value)}
+                  className="w-full text-center text-2xl font-black p-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 placeholder:text-slate-200"
+                />
+                
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setShowJumpModal(false)}
+                    className="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 py-3 bg-primary-600 text-white rounded-xl font-black text-sm shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all active:scale-95"
+                  >
+                    Go
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

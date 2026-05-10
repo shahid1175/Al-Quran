@@ -21,8 +21,8 @@ export const quranService = {
     const ayahId = Math.abs(hash * 31) % ayahs.length;
     const ayah = ayahs[ayahId];
     
-    const translations = await this.getTranslation(surahId, 'en');
-    const translation = translations[ayahId].text;
+    const translations = await this.getTranslation(surahId, 'bn');
+    const translation = translations.length > ayahId ? translations[ayahId].text : "Translation not available";
     
     // Get Surah list for name
     const surahs = await this.getSurahs();
@@ -77,14 +77,48 @@ export const quranService = {
   },
 
   async getTranslation(surahId: number, language: 'bn' | 'en' = 'bn'): Promise<any[]> {
-    // Check local storage first
-    const offlineData = await storageService.getSurah(surahId);
-    if (offlineData?.translations && language === 'bn') {
-      return offlineData.translations;
+    try {
+      // Check local storage first
+      const offlineData = await storageService.getSurah(surahId);
+      if (offlineData?.translations && language === 'bn') {
+        return offlineData.translations;
+      }
+      const edition = language === 'bn' ? 'bn.bengali' : 'en.sahih';
+      const response = await axios.get(`${BASE_URL}/surah/${surahId}/${edition}`);
+      return response.data.data.ayahs || [];
+    } catch (error) {
+      console.error(`Failed to fetch ${language} translation:`, error);
+      return [];
     }
-    const edition = language === 'bn' ? 'bn.bengali' : 'en.sahih';
-    const response = await axios.get(`${BASE_URL}/surah/${surahId}/${edition}`);
-    return response.data.data.ayahs;
+  },
+
+  async getWords(surahId: number): Promise<Record<number, any[]>> {
+    try {
+      const [bnResponse, enResponse] = await Promise.all([
+        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=text_uthmani&word_translation_language=20&language=bn`),
+        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=text_uthmani&word_translation_language=en`)
+      ]);
+      
+      const bnVerses = bnResponse.data.verses;
+      const enVerses = enResponse.data.verses;
+      const wordsMap: Record<number, any[]> = {};
+      
+      bnVerses.forEach((verse: any, index: number) => {
+        const enVerse = enVerses[index];
+        wordsMap[verse.verse_number] = verse.words.map((w: any, wIdx: number) => ({
+          id: w.id,
+          position: w.position,
+          text: w.text_uthmani,
+          translationBn: w.translation?.text || '...',
+          translationEn: enVerse?.words[wIdx]?.translation?.text || '...'
+        }));
+      });
+      
+      return wordsMap;
+    } catch (error) {
+      console.error('Failed to fetch words:', error);
+      return {};
+    }
   },
 
   async getTafsir(surahId: number, ayahNumberInSurah: number, language: 'bn' | 'en' = 'bn'): Promise<string> {
