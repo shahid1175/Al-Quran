@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Play, Volume2, BookOpen, Sparkles, Info } from 'lucide-react';
-import { TajweedRule } from '../lib/tajweed';
+import { TajweedRule, parseTajweed } from '../lib/tajweed';
 import { cn } from '../lib/utils';
 
 interface TajweedRuleModalProps {
@@ -12,19 +12,107 @@ interface TajweedRuleModalProps {
 export default function TajweedRuleModal({ rule, onClose }: TajweedRuleModalProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
   const playExample = () => {
-    // For now, we simulate playing. 
-    // In a real app, you'd have audio files for these specific examples or use a TTS service.
+    if (isPlaying) return;
+
+    if (rule.audioUrl) {
+      setIsPlaying(true);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
+      const audio = new Audio(rule.audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsPlaying(false);
+        audioRef.current = null;
+      };
+      
+      audio.onerror = (e) => {
+        console.error('Audio file playback failed, falling back to TTS', e);
+        setIsPlaying(false);
+        audioRef.current = null;
+        playWithTTS();
+      };
+      
+      audio.play().catch(err => {
+        console.error('Audio play error:', err);
+        setIsPlaying(false);
+        audioRef.current = null;
+        playWithTTS();
+      });
+      return;
+    }
+
+    playWithTTS();
+  };
+
+  const playWithTTS = () => {
+    if (!rule.example) return;
+
+    // Clean example text: Extract only Arabic characters
+    const arabicOnly = rule.example
+      .replace(/\s*\([^)]*\)\s*/g, '') // Remove everything in parentheses
+      .replace(/[^\u0600-\u06FF\s\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '') // Remove non-Arabic chars
+      .trim();
+
+    if (!arabicOnly) {
+      const firstWord = rule.example.split(' ')[0];
+      if (firstWord) {
+        speak(firstWord);
+      }
+      return;
+    }
+
+    speak(arabicOnly);
+  };
+
+  const speak = (text: string) => {
     setIsPlaying(true);
-    const utterance = new SpeechSynthesisUtterance(rule.example);
+    
+    // Stop any current speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ar-SA';
+    utterance.rate = 0.6; // Even slower for learning
+    
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = voices.find(v => v.lang.includes('ar'));
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+    }
+
     utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
+    utterance.onerror = (e) => {
+      console.error('Speech synthesis error:', e);
+      setIsPlaying(false);
+    };
+
     window.speechSynthesis.speak(utterance);
     
-    // Fallback timer if speech synthesis is not supported/failing
-    setTimeout(() => setIsPlaying(false), 2000);
+    // Safety fallback
+    setTimeout(() => {
+      if (!window.speechSynthesis.speaking) {
+        setIsPlaying(false);
+      }
+    }, 5000);
   };
+
+  React.useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const arabicExample = parseTajweed(rule.example);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
@@ -50,12 +138,12 @@ export default function TajweedRuleModal({ rule, onClose }: TajweedRuleModalProp
               <BookOpen size={40} />
             </div>
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 mb-2">
+              <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border mb-2", rule.textColor)} style={{ borderColor: 'currentColor' }}>
                 <Sparkles size={12} />
                 <span>Tajweed Rule</span>
               </div>
               <h3 className="text-4xl font-black text-slate-900 tracking-tight">{rule.label}</h3>
-              <p className="text-xl text-emerald-600 font-bold">{rule.description}</p>
+              <p className={cn("text-xl font-bold", rule.textColor)}>{rule.description}</p>
             </div>
           </div>
 
@@ -91,9 +179,11 @@ export default function TajweedRuleModal({ rule, onClose }: TajweedRuleModalProp
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-8">
-                  <p className="text-6xl font-serif text-white text-center" style={{ direction: 'rtl' }}>
-                    {rule.example.split(' ')[0]}
-                  </p>
+                  <p 
+                    className="text-6xl font-serif text-white text-center" 
+                    style={{ direction: 'rtl' }}
+                    dangerouslySetInnerHTML={{ __html: arabicExample }}
+                  />
                   
                   <button 
                     onClick={playExample}

@@ -15,7 +15,7 @@
         "settings": {
           "type": "object",
           "properties": {
-            "font": { "type": "string", "enum": ["indopak", "madani"] },
+            "font": { "type": "string", "enum": ["asia-noorani", "madani"] },
             "showTranslation": { "type": "boolean" },
             "tafsirLanguage": { "type": "string", "enum": ["bangla", "english"] },
             "reminderEnabled": { "type": "boolean" },

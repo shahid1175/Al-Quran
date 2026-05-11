@@ -121,7 +121,7 @@ export default function Home() {
             {dailyAyah ? (
                <div className="space-y-8">
                   <p 
-                    className="text-4xl font-arabic text-right leading-[3.5rem] text-slate-900 font-serif" 
+                    className="text-4xl font-madani text-right leading-[3.5rem] text-slate-900" 
                     style={{ direction: 'rtl' }}
                     dangerouslySetInnerHTML={{ __html: parseTajweed(dailyAyah.ayah.tajweed || dailyAyah.ayah.text) }}
                   />
@@ -191,7 +191,7 @@ export default function Home() {
             <div className="space-y-8">
               <div className="space-y-6">
                 {dailyHadith.textAr && (
-                  <p className="text-4xl font-arabic text-right leading-[3.5rem] text-slate-900 font-serif" style={{ direction: 'rtl' }}>
+                  <p className="text-4xl font-madani text-right leading-[3.5rem] text-slate-900" style={{ direction: 'rtl' }}>
                     {dailyHadith.textAr}
                   </p>
                 )}

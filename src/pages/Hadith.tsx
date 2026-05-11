@@ -191,7 +191,7 @@ export default function HadithPage() {
                 ) : (
                   <div className="space-y-12">
                      {hadith.textAr && (
-                       <p className="text-4xl font-bold text-slate-900 leading-[1.8] text-right font-arabic" dir="rtl">
+                       <p className="text-4xl font-bold text-slate-900 leading-[1.8] text-right font-madani" dir="rtl">
                          {hadith.textAr}
                        </p>
                      )}

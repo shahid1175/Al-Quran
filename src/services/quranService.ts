@@ -45,16 +45,19 @@ export const quranService = {
     }
   },
 
-  async getSurah(id: number, reciterIdentifier: string = 'ar.alafasy'): Promise<Ayah[]> {
-    // Check local storage first (only if it matches default reciter or we might need separate storage)
+  async getSurah(id: number, reciterIdentifier: string = 'ar.alafasy', edition: 'madani' | 'asia-noorani' = 'madani'): Promise<Ayah[]> {
+    // Check local storage first (only if it matches default reciter/edition)
     const offlineData = await storageService.getSurah(id);
-    if (offlineData && reciterIdentifier === 'ar.alafasy') {
+    if (offlineData && reciterIdentifier === 'ar.alafasy' && edition === 'madani') {
       console.log(`Using offline data for Surah ${id}`);
       return offlineData.ayahs;
     }
 
-    // Fetch Uthmani text, specified audio, and Tajweed text
-    const response = await axios.get(`${BASE_URL}/surah/${id}/editions/quran-uthmani,${reciterIdentifier},ar.tajweed`);
+    const textEditionId = edition === 'madani' ? 'quran-uthmani' : 'ar.indopak';
+    
+    // Fetch specified text, Specified audio, and Tajweed text
+    // Note: ar.tajweed is Uthmani based, but we'll try to map it or provide it separately
+    const response = await axios.get(`${BASE_URL}/surah/${id}/editions/${textEditionId},${reciterIdentifier},ar.tajweed`);
     const [textEdition, audioEdition, tajweedEdition] = response.data.data;
     
     return textEdition.ayahs.map((ayah: any, index: number) => ({
@@ -92,11 +95,12 @@ export const quranService = {
     }
   },
 
-  async getWords(surahId: number): Promise<Record<number, any[]>> {
+  async getWords(surahId: number, edition: 'madani' | 'asia-noorani' = 'madani'): Promise<Record<number, any[]>> {
     try {
+      const textField = edition === 'madani' ? 'text_uthmani' : 'text_indopak';
       const [bnResponse, enResponse] = await Promise.all([
-        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=text_uthmani&word_translation_language=20&language=bn`),
-        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=text_uthmani&word_translation_language=en`)
+        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=${textField}&word_translation_language=20&language=bn`),
+        axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=${textField}&word_translation_language=en`)
       ]);
       
       const bnVerses = bnResponse.data.verses;
@@ -108,7 +112,7 @@ export const quranService = {
         wordsMap[verse.verse_number] = verse.words.map((w: any, wIdx: number) => ({
           id: w.id,
           position: w.position,
-          text: w.text_uthmani,
+          text: w[textField],
           translationBn: w.translation?.text || '...',
           translationEn: enVerse?.words[wIdx]?.translation?.text || '...'
         }));

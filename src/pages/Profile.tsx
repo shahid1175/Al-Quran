@@ -232,7 +232,7 @@ export default function Profile() {
 
                        <div className="space-y-6">
                           {h.textAr && (
-                             <p className="text-2xl font-bold text-slate-900 leading-relaxed text-right font-arabic" dir="rtl">
+                             <p className="text-2xl font-bold text-slate-900 leading-relaxed text-right font-madani" dir="rtl">
                                 {h.textAr}
                              </p>
                           )}

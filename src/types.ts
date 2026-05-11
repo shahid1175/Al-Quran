@@ -38,7 +38,7 @@ export interface UserProfile {
   level: number;
   badges: string[];
   settings: {
-    font: 'indopak' | 'madani';
+    font: 'asia-noorani' | 'madani';
     showTranslation: boolean;
     tafsirLanguage: 'bangla' | 'english';
     reminderEnabled: boolean;

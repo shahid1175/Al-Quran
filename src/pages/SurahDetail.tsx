@@ -12,6 +12,7 @@ import { storageService } from '../services/storageService';
 import { parseTajweed, TAJWEED_RULES, TajweedRule } from '../lib/tajweed';
 
 import TajweedRuleModal from '../components/TajweedRuleModal';
+import TajweedColorSheet from '../components/TajweedColorSheet';
 
 export default function SurahDetail() {
   const { id } = useParams();
@@ -26,7 +27,7 @@ export default function SurahDetail() {
   
   const [showTranslation, setShowTranslation] = useState(true);
   const [wordByWordMode, setWordByWordMode] = useState(false);
-  const [tajweedMode, setTajweedMode] = useState(true);
+  const [tajweedMode, setTajweedMode] = useState(false);
   const [memorizeMode, setMemorizeMode] = useState(false);
   const [verseSearch, setVerseSearch] = useState("");
   const [revealedVerses, setRevealedVerses] = useState<number[]>([]);
@@ -46,6 +47,8 @@ export default function SurahDetail() {
   const [playSpeed, setPlaySpeed] = useState(1);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  const [activeWord, setActiveWord] = useState<{ word: any; ayahId: number } | null>(null);
 
   const startPractice = async (ayah: Ayah) => {
     try {
@@ -86,7 +89,7 @@ export default function SurahDetail() {
     }
     setAnalyzingAyahId(null);
   };
-  const [font, setFont] = useState<'madani' | 'indopak'>('madani');
+  const [font, setFont] = useState<'madani' | 'asia-noorani'>('madani');
   const [selectedAyah, setSelectedAyah] = useState<Ayah | null>(null);
   const [tafsir, setTafsir] = useState<string | null>(null);
   const [isAiExplaining, setIsAiExplaining] = useState(false);
@@ -98,11 +101,11 @@ export default function SurahDetail() {
     if (id) {
       setLoading(true);
       Promise.all([
-        quranService.getSurah(parseInt(id), reciter),
+        quranService.getSurah(parseInt(id), reciter, font),
         quranService.getTranslation(parseInt(id), 'bn'),
         quranService.getTranslation(parseInt(id), 'en'),
         quranService.isDownloaded(parseInt(id)),
-        quranService.getWords(parseInt(id))
+        quranService.getWords(parseInt(id), font)
       ]).then(([a, tBn, tEn, d, w]) => {
         const ayahsWithWords = a.map(ayah => {
           const words = w[ayah.numberInSurah] || [];
@@ -124,7 +127,7 @@ export default function SurahDetail() {
         setLoading(false);
       });
     }
-  }, [id, reciter]);
+  }, [id, reciter, font]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -355,16 +358,17 @@ export default function SurahDetail() {
             <button 
               onClick={() => setTajweedMode(!tajweedMode)}
               className={cn(
-                "p-2.5 rounded-xl transition-all flex items-center gap-2", 
-                tajweedMode ? "bg-orange-50 text-orange-600 shadow-sm" : "text-slate-400 hover:bg-slate-200"
+                "p-2.5 rounded-xl transition-all flex items-center gap-2 border", 
+                tajweedMode 
+                  ? "bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-200" 
+                  : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
               )}
               title="Toggle Tajweed Highlights"
             >
-              <div className="flex -space-x-1">
-                 <div className="w-2 h-2 rounded-full bg-orange-400" />
-                 <div className="w-2 h-2 rounded-full bg-blue-400" />
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest hidden md:block">Tajweed</span>
+              <Sparkles size={18} className={cn(tajweedMode ? "animate-pulse" : "")} />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:block">
+                Tajweed {tajweedMode ? 'ON' : 'OFF'}
+              </span>
             </button>
             <button 
               onClick={() => setWordByWordMode(!wordByWordMode)}
@@ -409,11 +413,11 @@ export default function SurahDetail() {
               <Settings size={20} />
             </button>
             <button 
-              onClick={() => setFont(font === 'madani' ? 'indopak' : 'madani')}
+              onClick={() => setFont(font === 'madani' ? 'asia-noorani' : 'madani')}
               className="p-2.5 rounded-xl hover:bg-slate-200 text-slate-500 transition-all flex items-center gap-2"
             >
               <Type size={20} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">{font === 'madani' ? 'Madani' : 'IndoPak'}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">{font === 'madani' ? 'Madani' : 'Noorani Quran'}</span>
             </button>
         </div>
       </header>
@@ -429,6 +433,50 @@ export default function SurahDetail() {
         </div>
       ) : (
         <div className="space-y-8">
+          {tajweedMode && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="sticky top-[80px] z-30 bg-white/95 backdrop-blur-md border border-slate-200 rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] mb-8 transition-all"
+            >
+              <div className="flex items-center justify-between gap-4 mb-3 px-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-orange-50 rounded-xl">
+                    <Sparkles size={16} className="text-orange-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 font-bangla leading-tight">তাজইদ রঙ নির্দেশিকা</h3>
+                    <p className="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em]">Live Tajweed Guide</p>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                   <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                {TAJWEED_RULES.map((rule) => (
+                  <button
+                    key={rule.label}
+                    onClick={() => setActiveRule(rule)}
+                    className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100"
+                  >
+                    <div className={cn(
+                      "w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-inner group-hover:scale-110 transition-transform ring-4 ring-transparent group-hover:ring-slate-50", 
+                      rule.color
+                    )} />
+                    <div className="flex flex-col items-start">
+                      <span className={cn("text-[10px] font-black font-bangla leading-tight", rule.textColor)}>{rule.description}</span>
+                      <span className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">{rule.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {filteredAyahs.map((ayah) => {
             const idx = ayahs.indexOf(ayah);
             const isRevealed = revealedVerses.includes(ayah.numberInSurah);
@@ -504,33 +552,71 @@ export default function SurahDetail() {
                     style={{ direction: 'rtl' }}
                   >
                     {wordByWordMode && ayah.words ? (
-                      ayah.words.map((word) => (
-                        <div key={word.id} className="flex flex-col items-center gap-1 group/word">
-                          <span 
+                      ayah.words.map((word) => {
+                        // Extract rule name from tajweed string if it contains spans
+                        const wordTajweed = tajweedMode && word.tajweed ? parseTajweed(word.tajweed) : word.text;
+                        const hasTajweed = tajweedMode && word.tajweed && wordTajweed.includes('data-rule');
+
+                        return (
+                          <div 
+                            key={word.id} 
                             className={cn(
-                              "font-serif transition-all text-slate-900 group-hover/word:text-emerald-600",
-                              font === 'madani' ? "text-4xl" : "text-3xl"
+                              "flex flex-col items-center gap-2 group/word p-3 rounded-2xl transition-all cursor-pointer",
+                              activeWord?.word.id === word.id ? "bg-emerald-50 ring-1 ring-emerald-200 shadow-sm" : "hover:bg-slate-50"
                             )}
-                            dangerouslySetInnerHTML={{ __html: tajweedMode && word.tajweed ? parseTajweed(word.tajweed) : word.text }}
-                          />
-                          <div className="flex flex-col items-center gap-1" style={{ direction: 'ltr' }}>
-                            <span className="text-sm font-bangla text-emerald-700 font-bold leading-tight group-hover/word:text-emerald-500 transition-colors">
-                              {word.translationBn}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium group-hover/word:text-slate-500 transition-colors">
-                              {word.translationEn}
-                            </span>
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveWord({ word, ayahId: ayah.number });
+                            }}
+                          >
+                            <div className="relative">
+                              <span 
+                                className={cn(
+                                  "transition-all text-slate-900 group-hover/word:text-emerald-600",
+                                  font === 'madani' ? "font-madani text-4xl" : "font-noorani text-5xl"
+                                )}
+                                dangerouslySetInnerHTML={{ __html: wordTajweed }}
+                              />
+                              {hasTajweed && (
+                                <div 
+                                  className="absolute -top-1 -right-1 w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.1)]" 
+                                  style={{ 
+                                    backgroundColor: 
+                                      wordTajweed.includes('tajweed-madd-compulsory') ? '#0D47A1' :
+                                      wordTajweed.includes('tajweed-madd-allowable') ? '#EF6C00' :
+                                      wordTajweed.includes('tajweed-madd') ? '#1565C0' :
+                                      wordTajweed.includes('tajweed-qalqala') ? '#C62828' :
+                                      wordTajweed.includes('tajweed-ghunna') || wordTajweed.includes('tajweed-ikhfa') || wordTajweed.includes('tajweed-iqlab') ? '#2E7D32' :
+                                      wordTajweed.includes('tajweed-leen') ? '#B8860B' :
+                                      wordTajweed.includes('tajweed-tafkhim') ? '#283593' :
+                                      wordTajweed.includes('tajweed-idgham') ? '#757575' : '#fb923c'
+                                  }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex flex-col items-center gap-1" style={{ direction: 'ltr' }}>
+                              <span className="text-sm font-bangla text-emerald-700 font-bold leading-tight group-hover/word:text-emerald-500 transition-colors">
+                                {word.translationBn}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium group-hover/word:text-slate-500 transition-colors">
+                                {word.translationEn}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <p className={cn(
-                        "leading-[4.5rem] font-serif transition-all",
-                        font === 'madani' ? "text-4xl" : "text-3xl",
+                        "leading-[4.5rem] transition-all",
+                        font === 'madani' ? "font-madani text-4xl" : "font-noorani text-5xl",
                         searchHighlightedId === ayah.numberInSurah ? "text-primary-900" : "text-slate-900"
                       )} 
-                      style={{ fontSize: `32px` }}
-                      dangerouslySetInnerHTML={{ __html: tajweedMode && ayah.tajweed ? parseTajweed(ayah.tajweed) : ayah.text }}
+                      style={{ fontSize: font === 'madani' ? '36px' : '48px' }}
+                      dangerouslySetInnerHTML={{ 
+                        __html: (tajweedMode && ayah.tajweed) 
+                          ? parseTajweed(ayah.tajweed) 
+                          : ayah.text 
+                      }}
                       />
                     )}
                   </div>
@@ -591,6 +677,109 @@ export default function SurahDetail() {
           })}
         </div>
       )}
+
+      {/* Word Details Modal */}
+      <AnimatePresence>
+        {activeWord && (
+          <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/40 backdrop-blur-sm sm:items-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg bg-white rounded-[40px] p-8 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setActiveWord(null)}
+                className="absolute right-6 top-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="space-y-8">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="bg-emerald-50 w-24 h-24 rounded-3xl flex items-center justify-center border border-emerald-100 shadow-sm shadow-emerald-500/10">
+                    <span 
+                      className={cn(
+                        "text-5xl text-slate-900",
+                        font === 'madani' ? "font-madani" : "font-noorani"
+                      )} 
+                      style={{ direction: 'rtl' }}
+                      dangerouslySetInnerHTML={{ __html: parseTajweed(activeWord.word.tajweed || activeWord.word.text) }}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-1">শব্দ বিশ্লেষণ (Word Analysis)</h3>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Surah {id} • Ayah {activeWord.ayahId}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block">Bangla Translation</span>
+                    <p className="text-lg font-bold text-slate-900">{activeWord.word.translationBn}</p>
+                  </div>
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 block">English Meaning</span>
+                    <p className="text-lg font-bold text-slate-900">{activeWord.word.translationEn}</p>
+                  </div>
+                </div>
+
+                {activeWord.word.tajweed && activeWord.word.tajweed.includes('[') && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <Sparkles size={14} className="text-orange-400" />
+                       তাজউইদ নিয়ম কাজ করছে (Tajweed Applied)
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {TAJWEED_RULES.filter(rule => {
+                        // Very basic check to see if this rule tag exists in the tajweed string
+                        // This is a naive way, but works for the current tag system
+                        const tags = {
+                          'Ghunna': ['[g]', '[h]'],
+                          'Qalqala': ['[p]', '[q]'],
+                          'Madd': ['[m]'],
+                          'Ikhfa': ['[i]'],
+                          'Idgham': ['[d]', '[n]'],
+                          'Ikhfa Shafawi': ['[s]'],
+                          'Idgham Shafawi': ['[y]'],
+                          'Iqlab': ['[k]'],
+                          'Madde Leen': ['[l]']
+                        };
+                        const ruleTags = tags[rule.label as keyof typeof tags] || [];
+                        return ruleTags.some(tag => activeWord.word.tajweed?.includes(tag));
+                      }).map(rule => (
+                        <button
+                          key={rule.label}
+                          onClick={() => {
+                            setActiveRule(rule);
+                            setActiveWord(null);
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-bold transition-all hover:scale-105 active:scale-95",
+                            rule.color
+                          )}
+                        >
+                          <BookOpen size={14} />
+                          {rule.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="pt-4 border-t border-slate-100">
+                  <button 
+                    onClick={() => setActiveWord(null)}
+                    className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-colors"
+                  >
+                    বন্ধ করুন (Close)
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Tafsir Modal */}
       <AnimatePresence>
@@ -733,7 +922,10 @@ export default function SurahDetail() {
                         </div>
                         <div className="p-8 rounded-3xl bg-white border border-slate-100 shadow-sm">
                            <p 
-                             className="text-right leading-loose text-3xl font-serif text-slate-900" 
+                             className={cn(
+                               "text-right leading-loose text-3xl text-slate-900",
+                               font === 'madani' ? "font-madani" : "font-noorani"
+                             )} 
                              style={{ direction: 'rtl' }}
                              dangerouslySetInnerHTML={{ __html: parseTajweed(selectedAyah.tajweed || selectedAyah.text) }}
                            />

@@ -78,7 +78,7 @@ function VoiceSearchModal({ onClose }: { onClose: () => void }) {
             ) : result ? (
               <div className="w-full space-y-6">
                  <div className="p-8 rounded-[40px] bg-primary-50 border border-primary-100 space-y-4">
-                    <p className="text-3xl font-arabic text-primary-900" style={{ direction: 'rtl' }}>{result.transcribedText}</p>
+                    <p className="text-3xl font-madani text-primary-900" style={{ direction: 'rtl' }}>{result.transcribedText}</p>
                     <div className="flex items-center justify-center gap-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
                        <span>Surah {result.surahNumber}</span>
                        <span>•</span>
@@ -231,7 +231,7 @@ export default function Quran() {
                         <ShieldCheck size={12} />
                       </span>
                     )}
-                    <h3 className="text-2xl font-arabic text-primary-900" style={{ fontFamily: 'Madani' }}>{surah.name}</h3>
+                    <h3 className="text-2xl font-madani text-primary-900">{surah.name}</h3>
                   </div>
                   <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-400">{surah.revelationType}</span>
                 </div>

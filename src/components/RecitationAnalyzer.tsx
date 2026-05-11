@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Square, Play, RefreshCcw, Loader2, CheckCircle2, AlertCircle, Volume2, Award, Sparkles } from 'lucide-react';
 import { aiService } from '../services/aiService';
+import { parseTajweed } from '../lib/tajweed';
 
 interface RecitationAnalyzerProps {
   initialVerse?: string;
@@ -121,9 +122,11 @@ export default function RecitationAnalyzer({ initialVerse = "بِسْمِ الل
         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
           <Volume2 size={80} />
         </div>
-        <p className="text-4xl md:text-5xl font-serif text-center text-slate-900 leading-relaxed mb-4" style={{ direction: 'rtl' }}>
-          {initialVerse}
-        </p>
+        <p 
+          className="text-4xl md:text-5xl font-serif text-center text-slate-900 leading-relaxed mb-4" 
+          style={{ direction: 'rtl' }}
+          dangerouslySetInnerHTML={{ __html: initialVerse.includes('[') ? parseTajweed(initialVerse) : initialVerse }}
+        />
         <p className="text-center text-sm font-bold text-slate-400 italic">
           "{initialVerse}"
         </p>

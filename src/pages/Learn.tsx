@@ -164,7 +164,7 @@ export default function Learn() {
                    <span className="h-2 w-2 rounded-full bg-primary-500 animate-pulse" />
                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary-600">Practice Session</p>
                 </div>
-                <h3 className="text-5xl font-arabic text-slate-900 leading-[5rem] py-4" style={{ direction: 'rtl' }}>
+                <h3 className="text-5xl font-madani text-slate-900 leading-[5rem] py-4" style={{ direction: 'rtl' }}>
                   {activeLesson.text}
                 </h3>
               </div>
@@ -262,7 +262,7 @@ export default function Learn() {
                                     {m.type[0]}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-bold font-arabic" style={{ direction: 'rtl' }}>{m.word}</p>
+                                    <p className="text-sm font-bold font-madani" style={{ direction: 'rtl' }}>{m.word}</p>
                                     <p className="text-[10px] text-primary-300 font-medium">{m.suggestion}</p>
                                   </div>
                                 </div>
