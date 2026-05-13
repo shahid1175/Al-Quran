@@ -9,6 +9,8 @@ export interface OfflineSurah {
   id: number;
   ayahs: Ayah[];
   translations?: any[];
+  translationsEn?: any[];
+  words?: Record<number, any[]>;
   downloadedAt: number;
   audioBlobs?: { [ayahNumber: number]: Blob };
 }
@@ -29,12 +31,21 @@ function getDB() {
 }
 
 export const storageService = {
-  async saveSurah(id: number, ayahs: Ayah[], translations?: any[], audioBlobs?: { [ayahNumber: number]: Blob }) {
+  async saveSurah(
+    id: number, 
+    ayahs: Ayah[], 
+    translations?: any[], 
+    translationsEn?: any[],
+    words?: Record<number, any[]>,
+    audioBlobs?: { [ayahNumber: number]: Blob }
+  ) {
     const db = await getDB();
     const offlineSurah: OfflineSurah = {
       id,
       ayahs,
       translations,
+      translationsEn,
+      words,
       downloadedAt: Date.now(),
       audioBlobs
     };

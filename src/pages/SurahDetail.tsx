@@ -96,6 +96,7 @@ export default function SurahDetail() {
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -165,6 +166,8 @@ export default function SurahDetail() {
       } else {
         await quranService.downloadSurah(parseInt(id));
         setIsDownloaded(true);
+        setDownloadSuccess(true);
+        setTimeout(() => setDownloadSuccess(false), 3000);
       }
     } catch (error) {
       console.error('Download action failed:', error);
@@ -320,9 +323,17 @@ export default function SurahDetail() {
             <ChevronLeft size={24} />
           </Link>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-               Surah {id}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                 Surah {id}
+              </h2>
+              {isDownloaded && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-lg border border-green-200 shadow-sm">
+                  <CheckCircle size={10} className="fill-green-700 text-white" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">ডাউনলোড করা (Offline)</span>
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => setShowJumpModal(true)}
               className="text-[10px] text-primary-600 font-black uppercase tracking-widest hover:text-primary-700 transition-colors flex items-center gap-1"
@@ -385,20 +396,59 @@ export default function SurahDetail() {
               onClick={handleDownload}
               disabled={downloading}
               className={cn(
-                "p-2.5 rounded-xl transition-all flex items-center justify-center",
+                "p-2.5 rounded-xl transition-all flex items-center justify-center relative group overflow-hidden border",
                 isDownloaded 
-                  ? "bg-green-50 text-green-600 hover:bg-red-50 hover:text-red-600" 
-                  : "text-slate-400 hover:bg-slate-200"
+                  ? "bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-200 hover:bg-red-500 hover:border-red-600 hover:shadow-red-200" 
+                  : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-primary-600 hover:border-primary-200"
               )}
-              title={isDownloaded ? "Remove from offline" : "Download for offline"}
+              title={isDownloaded ? "অফলাইন থেকে মুছুন (Remove from offline)" : "অফলাইনের জন্য ডাউনলোড করুন (Download for offline)"}
             >
-              {downloading ? (
-                <RefreshCw size={20} className="animate-spin" />
-              ) : isDownloaded ? (
-                <CheckCircle size={20} className="group-hover:hidden" />
-              ) : (
-                <Download size={20} />
-              )}
+              <AnimatePresence mode="wait">
+                {downloading ? (
+                  <motion.div
+                    key="downloading"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                  >
+                    <RefreshCw size={20} className="animate-spin" />
+                  </motion.div>
+                ) : downloadSuccess ? (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2 text-white"
+                  >
+                    <Sparkles size={18} className="animate-bounce" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">ডাউনলোড সফল!</span>
+                  </motion.div>
+                ) : isDownloaded ? (
+                  <motion.div
+                    key="downloaded"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <CheckCircle size={20} className="group-hover:hidden" />
+                    <Trash2 size={20} className="hidden group-hover:block" />
+                    <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">অফলাইন</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="not-downloaded"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <Download size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">ডাউনলোড</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
             <button 
               onClick={() => setShowTranslation(!showTranslation)}
@@ -433,6 +483,34 @@ export default function SurahDetail() {
         </div>
       ) : (
         <div className="space-y-8">
+          {isDownloaded && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-emerald-50 border border-emerald-100 p-6 rounded-[40px] flex items-center justify-between shadow-sm"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-14 h-14 bg-white rounded-3xl flex items-center justify-center text-emerald-600 shadow-inner border border-emerald-50">
+                  <div className="relative">
+                    <BookOpen size={28} />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">অফলাইন সংস্করণ প্রস্তুত</h3>
+                  <p className="text-[10px] text-emerald-600 uppercase font-black tracking-[0.1em] mt-1">Ready for Offline Reading</p>
+                  <p className="text-[9px] text-slate-400 mt-1 font-medium italic">ইন্টারনেট সংযোগ ছাড়াই এই সূরাটি পড়া যাবে</p>
+                </div>
+              </div>
+              <div className="text-right hidden sm:block">
+                <div className="px-4 py-2 bg-white rounded-2xl border border-emerald-100">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">সংরক্ষিত ডাটা</p>
+                  <p className="text-sm font-black text-emerald-700">{getSurahSize()}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {tajweedMode && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}

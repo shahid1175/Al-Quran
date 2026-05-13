@@ -68,11 +68,13 @@ export const quranService = {
   },
 
   async downloadSurah(id: number): Promise<void> {
-    const [ayahs, translations] = await Promise.all([
+    const [ayahs, translationsBn, translationsEn, words] = await Promise.all([
       this.getSurah(id),
-      this.getTranslation(id, 'bn')
+      this.getTranslation(id, 'bn'),
+      this.getTranslation(id, 'en'),
+      this.getWords(id)
     ]);
-    await storageService.saveSurah(id, ayahs, translations);
+    await storageService.saveSurah(id, ayahs, translationsBn, translationsEn, words);
   },
 
   async isDownloaded(id: number): Promise<boolean> {
@@ -83,8 +85,11 @@ export const quranService = {
     try {
       // Check local storage first
       const offlineData = await storageService.getSurah(surahId);
-      if (offlineData?.translations && language === 'bn') {
+      if (language === 'bn' && offlineData?.translations) {
         return offlineData.translations;
+      }
+      if (language === 'en' && offlineData?.translationsEn) {
+        return offlineData.translationsEn;
       }
       const edition = language === 'bn' ? 'bn.bengali' : 'en.sahih';
       const response = await axios.get(`${BASE_URL}/surah/${surahId}/${edition}`);
@@ -97,6 +102,11 @@ export const quranService = {
 
   async getWords(surahId: number, edition: 'madani' | 'asia-noorani' = 'madani'): Promise<Record<number, any[]>> {
     try {
+      // Check local storage first (only if default font)
+      const offlineData = await storageService.getSurah(surahId);
+      if (offlineData?.words && edition === 'madani') {
+        return offlineData.words;
+      }
       const textField = edition === 'madani' ? 'text_uthmani' : 'text_indopak';
       const [bnResponse, enResponse] = await Promise.all([
         axios.get(`https://api.quran.com/api/v4/verses/by_chapter/${surahId}?words=true&word_fields=${textField}&word_translation_language=20&language=bn`),
