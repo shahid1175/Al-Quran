@@ -3,13 +3,27 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MAKHAREJ_DATA, MakharijPoint } from '../lib/makharij';
 import { cn } from '../lib/utils';
-import { Info, Play, Volume2 } from 'lucide-react';
+import { Info, Play, Volume2, Sparkles } from 'lucide-react';
+import MakhrajDetailModal from './MakhrajDetailModal';
 
 export default function MakharijDiagram() {
-  const [selectedPoint, setSelectedPoint] = useState<MakharijPoint | null>(MAKHAREJ_DATA[0]);
+  const [selectedPoint, setSelectedPoint] = useState<MakharijPoint | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<MakharijPoint | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
-  const activePoint = selectedPoint || hoveredPoint;
+  const activePointForDiagram = hoveredPoint || selectedPoint || MAKHAREJ_DATA[0];
+
+  const handlePointClick = (point: MakharijPoint) => {
+    setSelectedPoint(point);
+    setShowModal(true);
+  };
+
+  const playAudio = (url?: string) => {
+    if (url) {
+      const audio = new Audio(url);
+      audio.play().catch(err => console.error("Audio play failed:", err));
+    }
+  };
 
   return (
     <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-xl shadow-slate-200/40">
@@ -34,19 +48,19 @@ export default function MakharijDiagram() {
                 key={point.id}
                 initial={false}
                 animate={{
-                  scale: activePoint?.id === point.id ? 1.5 : 1,
-                  backgroundColor: activePoint?.id === point.id ? '#f97316' : '#94a3b8'
+                  scale: activePointForDiagram?.id === point.id ? 1.5 : 1,
+                  backgroundColor: activePointForDiagram?.id === point.id ? '#f97316' : '#94a3b8'
                 }}
                 className={cn(
                   "absolute w-4 h-4 rounded-full border-2 border-white shadow-md z-10 transition-colors",
-                  activePoint?.id === point.id ? "z-20" : "z-10"
+                  activePointForDiagram?.id === point.id ? "z-20" : "z-10"
                 )}
                 style={{ 
                   left: `${point.illustrationPos.x}%`, 
                   top: `${point.illustrationPos.y}%`,
                   transform: 'translate(-50%, -50%)'
                 }}
-                onClick={() => setSelectedPoint(point)}
+                onClick={() => handlePointClick(point)}
                 onMouseEnter={() => setHoveredPoint(point)}
                 onMouseLeave={() => setHoveredPoint(null)}
               >
@@ -65,43 +79,48 @@ export default function MakharijDiagram() {
           
           <div className="absolute bottom-6 left-6 right-6 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
             <Info size={12} className="text-orange-500" />
-            মাখরাজ পয়েন্টে ক্লিক করে বর্ণনা দেখুন
+            মাখরাজ পয়েন্টে ক্লিক করে বিস্তারিত দেখুন
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Content Area (Quick View) */}
         <div className="lg:w-1/2 p-8 md:p-12 space-y-8 flex flex-col justify-center">
           <AnimatePresence mode="wait">
-            {activePoint ? (
+            {activePointForDiagram ? (
               <motion.div
-                key={activePoint.id}
+                key={activePointForDiagram.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <div>
+                <div onClick={() => setShowModal(true)} className="cursor-pointer group">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-black text-lg">
-                      {activePoint.id}
+                      {activePointForDiagram.id}
                     </span>
-                    <h3 className="text-2xl font-black text-slate-900">{activePoint.name}</h3>
+                    <h3 className="text-2xl font-black text-slate-900 group-hover:text-orange-600 transition-colors uppercase flex items-center gap-2">
+                      {activePointForDiagram.name}
+                      <Sparkles size={16} className="text-orange-400" />
+                    </h3>
                   </div>
-                  <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                    {activePoint.description}
+                  <p className="text-lg text-slate-600 leading-relaxed font-medium line-clamp-2">
+                    {activePointForDiagram.description}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">সংশ্লিষ্ট হরফসমূহ (Associated Letters)</h4>
-                  <div className="flex flex-wrap gap-4">
-                    {activePoint.letters.map((letter, idx) => (
-                      <div 
+                  <div className="flex flex-wrap gap-3">
+                    {activePointForDiagram.letters.map((letter, idx) => (
+                      <button 
                         key={idx}
-                        className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-4xl shadow-sm group hover:border-orange-200 transition-all"
+                        onClick={() => playAudio(letter.audio)}
+                        className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-3xl shadow-sm group hover:border-orange-200 transition-all active:scale-95"
+                        title="উচ্চারণ শুনতে ক্লিক করুন"
                       >
-                         <span className="font-madani group-hover:scale-110 transition-transform">{letter}</span>
-                      </div>
+                         <span className="font-madani group-hover:scale-110 transition-transform">{letter.char}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -109,12 +128,15 @@ export default function MakharijDiagram() {
                 <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">আরবি নাম</p>
-                    <p className="text-2xl font-madani text-slate-900">{activePoint.nameAr}</p>
+                    <p className="text-2xl font-madani text-slate-900">{activePointForDiagram.nameAr}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button className="p-4 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-all flex items-center gap-2">
-                       <Volume2 size={20} />
-                       <span className="text-sm font-bold">উচ্চারণ</span>
+                    <button 
+                      onClick={() => setShowModal(true)}
+                      className="px-6 py-4 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-all flex items-center gap-2 text-sm font-bold shadow-lg shadow-slate-900/10"
+                    >
+                       <Info size={18} />
+                       গাইড দেখুন
                     </button>
                   </div>
                 </div>
@@ -124,7 +146,7 @@ export default function MakharijDiagram() {
                  <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
                     <Info size={32} className="text-slate-300" />
                  </div>
-                 <p className="font-bold text-slate-400 uppercase tracking-widest">Select a point to see details</p>
+                 <p className="font-bold text-slate-400 uppercase tracking-widest">মাখরাজ নির্বাচন করুন</p>
               </div>
             )}
           </AnimatePresence>
@@ -137,10 +159,10 @@ export default function MakharijDiagram() {
           {MAKHAREJ_DATA.map((point) => (
             <button
               key={point.id}
-              onClick={() => setSelectedPoint(point)}
+              onClick={() => handlePointClick(point)}
               className={cn(
                 "whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all",
-                selectedPoint?.id === point.id 
+                (selectedPoint?.id === point.id || hoveredPoint?.id === point.id)
                   ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" 
                   : "bg-white text-slate-600 border border-slate-200 hover:border-orange-200"
               )}
@@ -149,6 +171,16 @@ export default function MakharijDiagram() {
             </button>
           ))}
       </div>
+
+      <AnimatePresence>
+        {showModal && selectedPoint && (
+          <MakhrajDetailModal 
+            point={selectedPoint} 
+            onClose={() => setShowModal(false)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
