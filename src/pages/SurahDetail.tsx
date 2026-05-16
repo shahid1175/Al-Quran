@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Play, Pause, Bookmark, Info, Settings, Languages, Type, MessageSquare, GraduationCap, Download, CheckCircle, Trash2, RefreshCw, BookOpen, EyeOff, Eye, X, Search, Mic, Square, Share2, Sliders, Volume2, Save, Sparkles, Hash, Columns } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Bookmark as BookmarkIcon, Info, Settings, Languages, Type, MessageSquare, GraduationCap, Download, CheckCircle, Trash2, RefreshCw, BookOpen, EyeOff, Eye, X, Search, Mic, Square, Share2, Sliders, Volume2, Save, Sparkles, Hash, Columns } from 'lucide-react';
 import { quranService } from '../services/quranService';
 import { aiService } from '../services/aiService';
 import { bookmarkService } from '../services/bookmarkService';
-import { Ayah } from '../types';
+import { Ayah, Bookmark } from '../types';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { storageService } from '../services/storageService';
@@ -28,6 +28,7 @@ export default function SurahDetail() {
   const [showTranslation, setShowTranslation] = useState(true);
   const [wordByWordMode, setWordByWordMode] = useState(false);
   const [tajweedMode, setTajweedMode] = useState(false);
+  const [showTajweedSheet, setShowTajweedSheet] = useState(false);
   const [memorizeMode, setMemorizeMode] = useState(false);
   const [verseSearch, setVerseSearch] = useState("");
   const [revealedVerses, setRevealedVerses] = useState<number[]>([]);
@@ -58,7 +59,7 @@ export default function SurahDetail() {
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => chunksRef.current.push(e.data);
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const arrayBuffer = await audioBlob.arrayBuffer();
         analyzePractice(arrayBuffer, ayah);
       };
@@ -78,19 +79,26 @@ export default function SurahDetail() {
     setAnalyzingAyahId(ayah.number);
     try {
       const res = await aiService.analyzeRecitation(buffer, ayah.text);
+      setRecitationFeedback({ ...res, ayahNumber: ayah.numberInSurah });
+      setShowFeedbackModal(true);
+      
       if (res.score > 75) {
         setRevealedVerses(prev => [...prev, ayah.numberInSurah]);
         updatePoints(50);
+      } else {
+        updatePoints(10); // Participation points
       }
     } catch (err) {
-      // Mock for demo
-      setRevealedVerses(prev => [...prev, ayah.numberInSurah]);
-      updatePoints(30);
+      console.error("Recitation analysis failed:", err);
+      // Fail gracefully or show a generic message
     }
     setAnalyzingAyahId(null);
   };
+  const [recitationFeedback, setRecitationFeedback] = useState<any | null>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [font, setFont] = useState<'madani' | 'asia-noorani'>('madani');
   const [selectedAyah, setSelectedAyah] = useState<Ayah | null>(null);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [tafsir, setTafsir] = useState<string | null>(null);
   const [isAiExplaining, setIsAiExplaining] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
@@ -99,14 +107,15 @@ export default function SurahDetail() {
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   useEffect(() => {
-    if (id) {
+    const surahId = id ? parseInt(id) : NaN;
+    if (!isNaN(surahId)) {
       setLoading(true);
       Promise.all([
-        quranService.getSurah(parseInt(id), reciter, font),
-        quranService.getTranslation(parseInt(id), 'bn'),
-        quranService.getTranslation(parseInt(id), 'en'),
-        quranService.isDownloaded(parseInt(id)),
-        quranService.getWords(parseInt(id), font)
+        quranService.getSurah(surahId, reciter, font),
+        quranService.getTranslation(surahId, 'bn'),
+        quranService.getTranslation(surahId, 'en'),
+        quranService.isDownloaded(surahId),
+        quranService.getWords(surahId, font)
       ]).then(([a, tBn, tEn, d, w]) => {
         const ayahsWithWords = a.map(ayah => {
           const words = w[ayah.numberInSurah] || [];
@@ -127,8 +136,14 @@ export default function SurahDetail() {
         setIsDownloaded(d);
         setLoading(false);
       });
+      
+      if (user) {
+        bookmarkService.getBookmarks(user.uid).then(b => {
+          setBookmarks(b.filter(bookmark => bookmark.surahId === surahId));
+        });
+      }
     }
-  }, [id, reciter, font]);
+  }, [id, reciter, font, user]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -176,13 +191,24 @@ export default function SurahDetail() {
     }
   };
 
-  const toggleAudio = (ayah: Ayah) => {
+  const toggleAudio = async (ayah: Ayah) => {
     if (playingId === ayah.number) {
       audioRef.current?.pause();
       setPlayingId(null);
     } else {
       if (audioRef.current) {
-        audioRef.current.src = ayah.audio;
+        let audioSrc = ayah.audio;
+        
+        // Check if we have an offline blob
+        if (isDownloaded && id) {
+          const offlineSurah = await storageService.getSurah(parseInt(id));
+          if (offlineSurah?.audioBlobs && offlineSurah.audioBlobs[ayah.numberInSurah]) {
+            const blob = offlineSurah.audioBlobs[ayah.numberInSurah];
+            audioSrc = URL.createObjectURL(blob);
+          }
+        }
+
+        audioRef.current.src = audioSrc;
         audioRef.current.playbackRate = playSpeed;
         audioRef.current.play();
         setPlayingId(ayah.number);
@@ -214,9 +240,18 @@ export default function SurahDetail() {
   };
 
   const handleBookmark = (ayah: Ayah) => {
-    setBookmarkingAyah(ayah);
-    setBookmarkNote("");
-    setShowBookmarkModal(true);
+    const existingBookmark = bookmarks.find(b => b.ayahId === ayah.numberInSurah);
+    if (existingBookmark) {
+      if (confirm("Remove this bookmark?")) {
+        bookmarkService.deleteBookmark(user!.uid, existingBookmark.id!).then(() => {
+          setBookmarks(prev => prev.filter(b => b.id !== existingBookmark.id));
+        });
+      }
+    } else {
+      setBookmarkingAyah(ayah);
+      setBookmarkNote("");
+      setShowBookmarkModal(true);
+    }
   };
 
   const handleJump = (e?: React.FormEvent) => {
@@ -241,12 +276,23 @@ export default function SurahDetail() {
   const confirmBookmark = async () => {
     if (!user || !bookmarkingAyah) return;
     try {
-      await bookmarkService.saveBookmark(
+      const res = await bookmarkService.saveBookmark(
         user.uid, 
         parseInt(id!), 
         bookmarkingAyah.numberInSurah, 
         bookmarkNote
       );
+      if (res) {
+        const newBookmark: Bookmark = {
+          id: res.id,
+          userId: user.uid,
+          surahId: parseInt(id!),
+          ayahId: bookmarkingAyah.numberInSurah,
+          note: bookmarkNote,
+          createdAt: new Date()
+        };
+        setBookmarks(prev => [...prev, newBookmark]);
+      }
       setShowBookmarkModal(false);
       setBookmarkingAyah(null);
       updatePoints(20);
@@ -379,6 +425,21 @@ export default function SurahDetail() {
               <Sparkles size={18} className={cn(tajweedMode ? "animate-pulse" : "")} />
               <span className="text-[10px] font-black uppercase tracking-widest hidden md:block">
                 Tajweed {tajweedMode ? 'ON' : 'OFF'}
+              </span>
+            </button>
+            <button 
+              onClick={() => setShowTajweedSheet(!showTajweedSheet)}
+              className={cn(
+                "p-2.5 rounded-xl transition-all flex items-center gap-2 border", 
+                showTajweedSheet 
+                  ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200" 
+                  : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
+              )}
+              title="Toggle Tajweed Color Sheet"
+            >
+              <Info size={18} />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden md:block">
+                Legend
               </span>
             </button>
             <button 
@@ -592,7 +653,7 @@ export default function SurahDetail() {
                        onClick={() => handleBookmark(ayah)}
                        className="p-3.5 hover:bg-orange-50 text-orange-400 rounded-2xl transition-all"
                      >
-                       <Bookmark size={20} />
+                       <BookmarkIcon size={20} />
                      </button>
                      <button 
                        onClick={() => showTafsir(ayah)}
@@ -755,6 +816,111 @@ export default function SurahDetail() {
           })}
         </div>
       )}
+
+      {/* Recitation Feedback Modal */}
+      <AnimatePresence>
+        {showFeedbackModal && recitationFeedback && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-xl bg-white rounded-[48px] p-8 lg:p-12 shadow-2xl space-y-8 overflow-hidden relative"
+            >
+              <button 
+                onClick={() => setShowFeedbackModal(false)}
+                className="absolute right-8 top-8 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors z-10"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="text-center space-y-4">
+                <div className="relative inline-block">
+                  <div className={cn(
+                    "w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black shadow-inner border-4",
+                    recitationFeedback.score >= 80 ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                    recitationFeedback.score >= 50 ? "bg-amber-50 text-amber-600 border-amber-100" :
+                    "bg-red-50 text-red-600 border-red-100"
+                  )}>
+                    {recitationFeedback.score}%
+                  </div>
+                  {recitationFeedback.score >= 80 && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 bg-yellow-400 text-white p-1.5 rounded-full shadow-lg"
+                    >
+                      <Sparkles size={16} fill="currentColor" />
+                    </motion.div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">আপনার তিলাওয়াত বিশ্লেষণ</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Recitation Feedback • Ayah {recitationFeedback.ayahNumber}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <MessageSquare size={12} /> সাধারণ মন্তব্য (General Feedback)
+                  </p>
+                  <p className="text-slate-700 font-medium leading-relaxed font-bangla">
+                    {recitationFeedback.feedback}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">তাজউইদ চেক (Tajweed Review)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(recitationFeedback.tajweedCheck).map(([rule, status]: [string, any]) => (
+                      <div key={rule} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                        <span className="text-sm font-bold text-slate-700 font-bangla">{rule}</span>
+                        <span className={cn(
+                          "text-[9px] font-black px-2 py-0.5 rounded-full uppercase",
+                          status.includes("সঠিক") || status.includes("ভালো") ? "bg-emerald-100 text-emerald-700" :
+                          status.includes("উন্নতি") ? "bg-amber-100 text-amber-700" :
+                          "bg-slate-100 text-slate-500"
+                        )}>
+                          {status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {recitationFeedback.mistakes && recitationFeedback.mistakes.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ভুল সংশোধন (Corrections)</p>
+                    <div className="space-y-3">
+                      {recitationFeedback.mistakes.map((m: any, i: number) => (
+                        <div key={i} className="flex items-start gap-4 p-5 bg-red-50 border border-red-100 rounded-3xl">
+                          <div className="bg-white px-3 py-1 rounded-xl text-xl font-arabic border border-red-100 shadow-sm" style={{ direction: 'rtl' }}>
+                            {m.word}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-xs font-black text-red-600 uppercase tracking-wider">{m.type}</p>
+                            <p className="text-sm text-slate-700 font-bangla font-medium">{m.suggestion}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 flex gap-4">
+                <button 
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="flex-1 py-5 bg-slate-900 text-white rounded-[24px] font-black text-lg shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95"
+                >
+                  ঠিক আছে (Got it)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Word Details Modal */}
       <AnimatePresence>
@@ -1255,6 +1421,11 @@ export default function SurahDetail() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Tajweed Rule Legend Sheet */}
+      {showTajweedSheet && (
+        <TajweedColorSheet onRuleClick={(rule) => setActiveRule(rule)} />
+      )}
 
       {/* Tajweed Explanation Modal */}
       <AnimatePresence>

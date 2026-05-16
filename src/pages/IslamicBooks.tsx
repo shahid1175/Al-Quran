@@ -13,16 +13,23 @@ import {
   Upload,
   Trash2,
   FileText,
-  Download
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { aiService, IslamicBook } from '../services/aiService';
 import { cn } from '../lib/utils';
 import { userBookService, UserBook } from '../services/userBookService';
+import { useAuth } from '../contexts/AuthContext';
+import { adminBookService, GlobalBook } from '../services/adminBookService';
+import { storageService, OfflineBook } from '../services/storageService';
 
 export default function IslamicBooks() {
+  const { user } = useAuth();
+  const isAdmin = user?.email === 'milondon75@gmail.com';
+
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [books, setBooks] = useState<IslamicBook[]>([]);
+  const [books, setBooks] = useState<(IslamicBook & { isOffline?: boolean; isUserBook?: boolean; userBookId?: string; isGlobalBook?: boolean; globalBookId?: string; isSavedOffline?: boolean })[]>([]);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<IslamicBook | null>(null);
@@ -32,6 +39,7 @@ export default function IslamicBooks() {
 
   const [activeCategory, setActiveCategory] = useState<string | null>("Selected Books");
   const [userBooks, setUserBooks] = useState<UserBook[]>([]);
+  const [downloadingBookId, setDownloadingBookId] = useState<string | null>(null);
 
   const loadUserBooks = async () => {
     const books = await userBookService.getAllBooks();
@@ -116,18 +124,52 @@ export default function IslamicBooks() {
     const category = forceCategory || activeCategory;
     if (isSelectedBooks || category === "My Collection" || category === "Selected Books") {
       setLoading(true);
-      let combinedBooks: (IslamicBook & { isOffline?: boolean; isUserBook?: boolean; userBookId?: string })[] = [];
+      let combinedBooks: (IslamicBook & { isOffline?: boolean; isUserBook?: boolean; userBookId?: string; isGlobalBook?: boolean; globalBookId?: string })[] = [];
       
       const finalCategory = isSelectedBooks ? "Selected Books" : (category || "Selected Books");
       setActiveCategory(finalCategory);
 
       if (finalCategory === "Selected Books") {
         combinedBooks = [...SELECTED_BOOKS];
+        
+        // Fetch Global Books from Firestore
+        try {
+          const gBooks = await adminBookService.getGlobalBooks();
+          const mappedGBooks = gBooks.map(gb => ({
+            title: gb.title,
+            author: gb.author,
+            description: gb.description,
+            category: gb.category,
+            relevance: gb.relevance,
+            isOffline: true,
+            isGlobalBook: true,
+            globalBookId: gb.id
+          }));
+          combinedBooks = [...combinedBooks, ...mappedGBooks];
+        } catch (err) {
+          console.error("Failed to load global books:", err);
+        }
       }
 
       // Fetch fresh user books to avoid stale state issues
       const currentUserBooks = await userBookService.getAllBooks();
       setUserBooks(currentUserBooks);
+
+      const offlineBooks = await storageService.getAllOfflineBooks();
+
+      // If My Collection, include explicitly saved offline books from AI searches
+      if (finalCategory === "My Collection") {
+        const mappedOfflineBooks = offlineBooks.map(ob => ({
+          title: ob.title,
+          author: ob.author,
+          description: ob.description,
+          category: ob.category,
+          relevance: ob.relevance,
+          isOffline: true,
+          isSavedOffline: true
+        }));
+        combinedBooks = [...combinedBooks, ...mappedOfflineBooks];
+      }
 
       const mappedUserBooks = currentUserBooks.map(ub => ({
         title: ub.title,
@@ -140,7 +182,12 @@ export default function IslamicBooks() {
         userBookId: ub.id
       }));
 
-      setBooks(combinedBooks.concat(mappedUserBooks));
+      const finalBooks = combinedBooks.concat(mappedUserBooks).map(b => ({
+        ...b,
+        isSavedOffline: offlineBooks.some(ob => ob.id === b.title) || !!(b as any).isOffline
+      }));
+
+      setBooks(finalBooks);
       setSearched(true);
       setLoading(false);
       setError(null);
@@ -161,7 +208,14 @@ export default function IslamicBooks() {
     
     try {
       const results = await aiService.searchIslamicBooks(finalQuery);
-      setBooks(results);
+      const offlineBooks = await storageService.getAllOfflineBooks();
+      
+      const mappedResults = results.map(b => ({
+        ...b,
+        isSavedOffline: offlineBooks.some(ob => ob.id === b.title)
+      }));
+
+      setBooks(mappedResults);
       if (results.length === 0) {
         setError("দুঃখিত, এই বিষয়ে কোনো ইসলামিক বই পাওয়া যায়নি। অনুগ্রহ করে অন্য কিছু খুঁজুন। (No Islamic books found for this search.)");
       }
@@ -173,11 +227,63 @@ export default function IslamicBooks() {
     }
   };
 
+  const handleSaveOffline = async (e: React.MouseEvent, book: any) => {
+    e.stopPropagation();
+    const bookId = book.title;
+    if (downloadingBookId) return;
+
+    setDownloadingBookId(bookId);
+    try {
+      if (book.isSavedOffline && !book.isOffline) {
+        await storageService.deleteOfflineBook(bookId);
+        setBooks(prev => prev.map(b => b.title === bookId ? { ...b, isSavedOffline: false } : b));
+      } else if (!book.isSavedOffline) {
+        // Fetch details first to save full summary
+        const details = await aiService.getBookDetails(book.title, book.author);
+        const offlineBook: OfflineBook = {
+          id: bookId,
+          title: book.title,
+          author: book.author,
+          description: book.description,
+          category: book.category,
+          relevance: book.relevance,
+          details: details,
+          downloadedAt: Date.now()
+        };
+        await storageService.saveOfflineBook(offlineBook);
+        setBooks(prev => prev.map(b => b.title === bookId ? { ...b, isSavedOffline: true } : b));
+      }
+    } catch (error) {
+      console.error('Failed to save book offline:', error);
+    } finally {
+      setDownloadingBookId(null);
+    }
+  };
+
   const handleViewDetails = async (book: any, initialMode: 'offline' | 'online' = 'offline') => {
     setSelectedBook(book);
     setLoadingDetails(true);
     setBookDetails(null);
     setReadingMode(initialMode);
+
+    // Check if it's a global book
+    if (book.isGlobalBook && book.globalBookId) {
+      // Find the book in the current list to get content (or we could fetch by ID if content is large)
+      // For now, assume it's in the fetched global books
+      const gBooks = await adminBookService.getGlobalBooks();
+      const gBook = gBooks.find(b => b.id === book.globalBookId);
+      if (gBook) {
+        setBookDetails({
+          fullDescription: gBook.content || "বইটির বিস্তারিত তথ্য পাওয়া যাচ্ছে না।",
+          keyTopics: ["Global Collection", gBook.category],
+          targetAudience: ["Everyone"],
+          isPdf: gBook.fileType === 'application/pdf',
+          fileName: gBook.fileName
+        });
+        setLoadingDetails(false);
+        return;
+      }
+    }
 
     // Check if it's a user-uploaded book
     if (book.isUserBook && book.userBookId) {
@@ -196,7 +302,15 @@ export default function IslamicBooks() {
       }
     }
 
-    // Check for offline data
+    // Check for local IndexedDB offline data
+    const savedBook = await storageService.getOfflineBook(book.title);
+    if (savedBook && savedBook.details) {
+      setBookDetails(savedBook.details);
+      setLoadingDetails(false);
+      return;
+    }
+
+    // Check for hardcoded offline data
     if (OFFLINE_BOOK_DATA[book.title]) {
       setTimeout(() => {
         setBookDetails(OFFLINE_BOOK_DATA[book.title]);
@@ -240,43 +354,65 @@ export default function IslamicBooks() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleDeleteGlobalBook = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("আপনি কি নিশ্চিতভাবে এই বইটি গ্লোবাল সংগ্রহ থেকে মুছে ফেলতে চান? (Admin Only)")) {
+      await adminBookService.deleteGlobalBook(id);
+      handleSearch(undefined, undefined, true, "Selected Books");
+    }
+  };
+
+  const handleFileUpload = async (file: File, isGlobal = false) => {
     if (!file) return;
 
     setLoading(true);
     try {
-      const isText = file.type.startsWith('text/') || file.name.endsWith('.txt');
+      const isText = file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md');
       let content = '';
-      let fileData: Blob | undefined;
-
+      
       if (isText) {
         content = await file.text();
       } else {
-        fileData = file;
+        // For non-text (PDF etc), we might just store metadata and a link in a real app,
+        // but here we can't easily store large blobs in Firestore.
+        // We'll simulate by saying "Uploaded" and storing placeholders if too large.
+        content = `[File: ${file.name}] Content restricted for preview. In a production app, this would be stored in Firebase Storage.`;
       }
 
-      const newUserBook: UserBook = {
-        id: crypto.randomUUID(),
-        title: file.name.split('.')[0],
-        author: "Unknown (Self Uploaded)",
-        fileName: file.name,
-        fileType: file.type || 'application/octet-stream',
-        content: isText ? content : undefined,
-        fileData: fileData,
-        uploadedAt: Date.now()
-      };
+      if (isGlobal && isAdmin) {
+        await adminBookService.uploadGlobalBook({
+          title: file.name.split('.')[0],
+          author: "Admin Contributed",
+          description: `A book contributed by the community admin. File: ${file.name}`,
+          category: "Shared Library",
+          relevance: "গ্লোবাল কালেকশন এর অংশ (Part of Global Collection)",
+          fileName: file.name,
+          fileType: file.type || 'application/octet-stream',
+          content: content,
+          addedBy: user?.uid || 'anonymous'
+        });
+        alert("গ্লোবাল লাইব্রেরিতে বইটি সফলভাবে যুক্ত হয়েছে!");
+      } else {
+        const newUserBook: UserBook = {
+          id: crypto.randomUUID(),
+          title: file.name.split('.')[0],
+          author: "Unknown (Self Uploaded)",
+          fileName: file.name,
+          fileType: file.type || 'application/octet-stream',
+          content: isText ? content : undefined,
+          fileData: !isText ? file : undefined,
+          uploadedAt: Date.now()
+        };
+        await userBookService.saveBook(newUserBook);
+        alert(`"${file.name}" সফলভাবে আপলোড করা হয়েছে!`);
+      }
 
-      await userBookService.saveBook(newUserBook);
       await loadUserBooks();
+      handleSearch(undefined, undefined, activeCategory === "Selected Books");
       
-      // Switch to My Collection to show the new book
-      setActiveCategory("My Collection");
-      handleSearch(undefined, undefined, false);
-      
-      alert(`"${file.name}" সফলভাবে আপলোড করা হয়েছে! (Uploaded successfully!)`);
     } catch (err) {
       console.error('File upload failed:', err);
-      alert('ফাইল আপলোড করতে সমস্যা হয়েছে। (Failed to upload file.)');
+      alert('ফাইল আপলোড করতে সমস্যা হয়েছে।');
     } finally {
       setLoading(false);
     }
@@ -457,12 +593,37 @@ export default function IslamicBooks() {
 
                   {/* Category Badge */}
                   <div className="absolute top-0 right-0 px-6 py-3 bg-emerald-50 text-emerald-600 rounded-bl-[20px] text-[10px] font-black uppercase tracking-widest border-l border-b border-emerald-100 flex items-center gap-3">
+                    <button 
+                      onClick={(e) => handleSaveOffline(e, book)}
+                      className={cn(
+                        "w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-95 border",
+                        book.isSavedOffline 
+                          ? "bg-emerald-600 text-white border-emerald-500" 
+                          : "bg-white text-slate-400 border-slate-100 hover:text-emerald-600"
+                      )}
+                      title={book.isSavedOffline ? "অফলাইন থেকে মুছুন (Remove from offline)" : "অফলাইনের জন্য সংরক্ষণ করুন (Save for offline)"}
+                    >
+                      {downloadingBookId === book.title ? (
+                         <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                    </button>
                     <span>{book.category}</span>
                     {(book as any).isUserBook && (
                       <button 
                         onClick={(e) => handleDeleteUserBook(e, (book as any).userBookId)}
                         className="w-8 h-8 -mr-2 bg-white flex items-center justify-center text-red-500 rounded-xl transition-all hover:bg-red-500 hover:text-white shadow-sm active:scale-95 border border-red-50"
                         title="মুছে ফেলুন (Delete)"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    {(book as any).isGlobalBook && isAdmin && (
+                      <button 
+                        onClick={(e) => handleDeleteGlobalBook(e, (book as any).globalBookId)}
+                        className="w-8 h-8 -mr-2 bg-white flex items-center justify-center text-red-500 rounded-xl transition-all hover:bg-red-500 hover:text-white shadow-sm active:scale-95 border border-red-50"
+                        title="Global Delete (Admin)"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -535,7 +696,7 @@ export default function IslamicBooks() {
                 </motion.div>
               ))}
 
-              {/* Upload Card for Selected Books and My Collection */}
+              {/* User Upload Card */}
               {(activeCategory === "Selected Books" || activeCategory === "My Collection") && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -549,23 +710,58 @@ export default function IslamicBooks() {
                     input.onchange = (e) => {
                       const file = (e.target as HTMLInputElement).files?.[0];
                       if (file) {
-                        handleFileUpload(file);
+                        handleFileUpload(file, false);
                       }
                     };
                     input.click();
                   }}
                 >
-                  <div className="w-20 h-20 bg-white text-emerald-600 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform group-hover:bg-emerald-600 group-hover:text-white">
-                    <Upload size={32} />
+                  <div className="w-16 h-16 bg-white text-emerald-600 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform group-hover:bg-emerald-600 group-hover:text-white">
+                    <Upload size={24} />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-black text-slate-900 leading-tight">বই আপলোড করুন</h3>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em]">Upload Your Book</p>
+                    <h3 className="text-lg font-black text-slate-900 leading-tight">ব্যক্তিগত আপলোড</h3>
+                    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Personal Upload</p>
                   </div>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                    আপনার পছন্দের কোনো ইসলামিক বই নির্বাচিত তালিকায় যুক্ত করতে এখানে ক্লিক করে আপলোড করুন।
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    আপনার নিজের পড়ার জন্য কোনো বই যুক্ত করুন।
                   </p>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500 transform translate-y-full group-hover:translate-y-0 transition-transform" />
+                </motion.div>
+              )}
+
+              {/* Admin Global Upload Card */}
+              {isAdmin && activeCategory === "Selected Books" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: (books.length + 1) * 0.1 }}
+                  className="group bg-indigo-50 p-8 rounded-[40px] border-2 border-dashed border-indigo-200 hover:border-indigo-500 transition-all hover:bg-indigo-100/30 flex flex-col items-center justify-center text-center space-y-6 cursor-pointer relative overflow-hidden"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.pdf,.doc,.docx,.txt';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        handleFileUpload(file, true);
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  <div className="absolute top-0 right-0 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-xl shadow-lg">
+                    Admin Only
+                  </div>
+                  <div className="w-16 h-16 bg-white text-indigo-600 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform group-hover:bg-indigo-600 group-hover:text-white">
+                    <Sparkles size={24} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-black text-slate-900 leading-tight">গ্লোবাল আপলোড</h3>
+                    <p className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em]">Global Admin Upload</p>
+                  </div>
+                  <p className="text-xs text-indigo-600 font-medium leading-relaxed">
+                    সবার জন্য এই লাইব্রেরিতে বই যুক্ত করুন। (Shared with all users)
+                  </p>
                 </motion.div>
               )}
             </motion.div>

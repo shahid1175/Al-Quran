@@ -65,6 +65,24 @@
         "points": { "type": "integer" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "GlobalBook": {
+      "title": "Global Book",
+      "description": "Books available to all users, added by admin",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "relevance": { "type": "string" },
+        "content": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "addedBy": { "type": "string" }
+      },
+      "required": ["title", "author", "uploadedAt"]
     }
   },
   "firestore": {
@@ -83,6 +101,10 @@
     "leaderboard/{userId}": {
       "schema": "Leaderboard",
       "description": "Public leaderboard data"
+    },
+    "globalBooks/{bookId}": {
+      "schema": "GlobalBook",
+      "description": "Central collection for books added by admins"
     }
   }
 }

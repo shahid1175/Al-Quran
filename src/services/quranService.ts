@@ -74,7 +74,20 @@ export const quranService = {
       this.getTranslation(id, 'en'),
       this.getWords(id)
     ]);
-    await storageService.saveSurah(id, ayahs, translationsBn, translationsEn, words);
+
+    // Fetch audio blobs for offline playback
+    const audioBlobs: Record<number, Blob> = {};
+    const audioPromises = ayahs.map(async (ayah) => {
+      try {
+        const response = await axios.get(ayah.audio, { responseType: 'blob' });
+        audioBlobs[ayah.numberInSurah] = response.data;
+      } catch (err) {
+        console.error(`Failed to download audio for ayah ${ayah.number}:`, err);
+      }
+    });
+
+    await Promise.all(audioPromises);
+    await storageService.saveSurah(id, ayahs, translationsBn, translationsEn, words, audioBlobs);
   },
 
   async isDownloaded(id: number): Promise<boolean> {

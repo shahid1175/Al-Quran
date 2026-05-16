@@ -187,7 +187,7 @@ const TAJWEED_SYLLABUS = [
 export default function TajweedLessons() {
   const [practiceVerse, setPracticeVerse] = useState<string | null>(null);
   const [activeRule, setActiveRule] = useState<TajweedRule | null>(null);
-  const [activeTab, setActiveTab] = useState<'rules' | 'syllabus' | 'makharij'>('rules');
+  const [activeTab, setActiveTab] = useState<'rules' | 'syllabus' | 'makharij' | 'guide'>('rules');
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
 
   const navigate = useNavigate();
@@ -200,6 +200,72 @@ export default function TajweedLessons() {
   const toggleChapter = (chapter: string) => {
     setExpandedChapter(prev => prev === chapter ? null : chapter);
   };
+
+  const DETAILED_RULES = [
+    {
+      title: "অগ্নি পরীক্ষা: গুন্নাহ (Ghunnah)",
+      definition: "গুন্নাহ হলো নাসারন্ধ্র বা নাকের বাঁশি দিয়ে আওয়াজ বের করা। এটি তাজবীদের অন্যতম সৌন্দর্য। যখন নুন (ن) বা মীম (م) এর উপর তাশদীদ থাকে, তখন ২ হারাকাত পরিমাণ গুন্নাহ করা ওয়াজিব।",
+      importance: "সঠিক গুন্নাহ ছাড়া তিলাওয়াতের সৌন্দর্য এবং অনেক ক্ষেত্রে অর্থও অসম্পূর্ণ থেকে যায়। এটি তিলাওয়াতে একটি ছন্দময় প্রবাহ তৈরি করে।",
+      rules: [
+        "তাশদীদযুক্ত নুুন ও মীম সবসময় ২ হারাকাত পরিমাণ গুন্নাহ হবে।",
+        "ইখফা-এর ক্ষেত্রেও নাকের বাঁশি ব্যবহার করে গুন্নাহ হয়।",
+        "ইদগামে বা-গুন্নাহর ক্ষেত্রে হরফ দুটিকে মিলিয়ে গুন্নাহ করতে হয়।"
+      ],
+      examples: [
+        { text: "إِنَّ اللهَ مَعَ الصَّابِرِينَ", bn: "ইন্নাল্লাহা মা'আস সাবিরীন", audio: "https://everyayah.com/data/Alafasy_128kbps/002153.mp3" },
+        { text: "عَمَّ يَتَسَاءَلُونَ", bn: "আম্মা ইয়াতাসালুন", audio: "https://everyayah.com/data/Alafasy_128kbps/078001.mp3" }
+      ],
+      icon: <Sparkles className="text-emerald-500" size={24} />,
+      color: "emerald"
+    },
+    {
+      title: "প্রতিধ্বনি: কলকলা (Qalqala)",
+      definition: "কলকলা মানে হলো প্রতিধ্বনি বা ধাক্কা দিয়ে পড়া। কলকলার হরফ ৫টি: ক্বফ (ق), ত্বো (ط), বা (ب), জীম (ج), দাল (দ)। সংক্ষেপে একে 'কুতুবু জাদিন' বলা হয়।",
+      importance: "এই হরফগুলো সাকিন বা ওয়াকফ অবস্থায় থাকলে এগুলোর মাখরাজে একটি ধাক্কা দিতে হয়, যাতে এর উচ্চারণ প্রতিধ্বনিত হয়ে পুনরায় কানে আসে।",
+      rules: [
+        "হরফ পাঁচটি সাকিন অবস্থায় থাকলে কলকলা হয়।",
+        "ওয়াকফ অবস্থায় হরফটি আসলে সবচেয়ে শক্তিশালী কলকলা হয় (যেমন সুরা ইখলাসের শেষে)।",
+        "হরফের মাখরাজকে শক্তভাবে আঁকড়ে ধরে দ্রুত ছেড়ে দিতে হয়।"
+      ],
+      examples: [
+        { text: "قُلْ هُوَ اللّٰهُ اَحَدٌ", bn: "ক্বুল হুয়াল্লাহু আহাদ(দ্)", audio: "https://everyayah.com/data/Alafasy_128kbps/112001.mp3" },
+        { text: "فِي الْعُقَدِ", bn: "ফিল উক্বদ(দ্)", audio: "https://everyayah.com/data/Alafasy_128kbps/113004.mp3" }
+      ],
+      icon: <Award className="text-red-500" size={24} />,
+      color: "red"
+    },
+    {
+      title: "দীর্ঘকরণ: মাদ (Madd)",
+      definition: "মাদ মানে হলো দীর্ঘ করা বা টেনে পড়া। মদ্দের প্রধান হরফ ৩টি: খালি আলিফ (ا), সাকিন ওয়াও (و) যার আগে পেশ আছে, এবং সাকিন ইয়া (ي) যার আগে যের আছে।",
+      importance: "মাদের সঠিক প্রয়োগ তিলাওয়াতের মাধুর্য বাড়ায় এবং হরফের সঠিক উচ্চারণ নিশ্চিত করে। মাদের ভুলে অনেক সময় শব্দের অর্থ বদলে যেতে পারে।",
+      rules: [
+        "মাদ আসলি বা আসল মাদ ১ হারাকাত (১ আলিফ) পরিমাণ টানতে হয়।",
+        "মাদ ফারয়ি বা শাখা মাদ ৪ থেকে ৬ হারাকাত পর্যন্ত টানা হয়ে থাকে (চিহ্ন: মোটা বা চিকন বাঁকা চিহ্ন)।",
+        "লীনের হরফের পর ওয়াকফ হলেও মাদ হয়।"
+      ],
+      examples: [
+        { text: "قَالَ لَا أَعْبُدُ", bn: "ক্ব-লা লা আ'বুদু", audio: "https://everyayah.com/data/Alafasy_128kbps/109002.mp3" },
+        { text: "فِي دِينِ اللَّهِ", bn: "ফী দী-নিল্লাহ", audio: "https://everyayah.com/data/Alafasy_128kbps/110002.mp3" }
+      ],
+      icon: <BookOpen className="text-blue-500" size={24} />,
+      color: "blue"
+    },
+    {
+      title: "স্পষ্টকরণ: ইযহার (Izhar)",
+      definition: "ইযহার মানে স্পষ্ট করে পড়া। নুন সাকিন বা তানফীনের পরে ৬টি হরফের (ء ه ع ح غ خ) কোনো একটি আসলে গুন্নাহ না করে স্পষ্টভাবে হরফের মাখরাজ থেকে পড়তে হয়।",
+      importance: "এটি নিশ্চিত করে যে হরফগুলো তাদের নিজস্ব মাখরাজ থেকে কোনো রকম বিলম্ব বা গুন্নাহ ছাড়াই উচ্চারিত হচ্ছে।",
+      rules: [
+        "হলকী হরফ ৬টি সবসময় মনে রাখতে হবে: হামযাহ, হা, আইন, হা, গাইন, খা।",
+        "এই হরফগুলোর আগে নুন সাকিন বা তানফীন আসলে একদম স্বাভাবিকভাবে পড়তে হবে।"
+      ],
+      examples: [
+        { text: "مِنْ حَيْثُ", bn: "মিন হাইছু", audio: "https://everyayah.com/data/Alafasy_128kbps/002150.mp3" },
+        { text: "عَذَابٌ أَلِيمٌ", bn: "আযাবুন আলীম", audio: "https://everyayah.com/data/Alafasy_128kbps/002010.mp3" }
+      ],
+      icon: <Info className="text-slate-500" size={24} />,
+      color: "slate"
+    }
+  ];
 
 
   return (
@@ -273,20 +339,29 @@ export default function TajweedLessons() {
       </AnimatePresence>
 
       {/* Tab Switcher */}
-      <div className="flex p-1 bg-slate-200/50 rounded-2xl w-fit mx-auto">
+      <div className="flex p-1 bg-slate-200/50 rounded-3xl w-fit mx-auto overflow-x-auto no-scrollbar max-w-full">
         <button
           onClick={() => setActiveTab('rules')}
           className={cn(
-            "px-6 py-3 rounded-xl font-bold text-sm transition-all",
+            "px-6 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap",
             activeTab === 'rules' ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
           )}
         >
           ব্যবহারিক নিয়ম
         </button>
         <button
+          onClick={() => setActiveTab('guide')}
+          className={cn(
+            "px-6 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap",
+            activeTab === 'guide' ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          বিস্তারিত গাইড
+        </button>
+        <button
           onClick={() => setActiveTab('makharij')}
           className={cn(
-            "px-6 py-3 rounded-xl font-bold text-sm transition-all",
+            "px-6 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap",
             activeTab === 'makharij' ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
           )}
         >
@@ -295,13 +370,125 @@ export default function TajweedLessons() {
         <button
           onClick={() => setActiveTab('syllabus')}
           className={cn(
-            "px-6 py-3 rounded-xl font-bold text-sm transition-all",
+            "px-6 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap",
             activeTab === 'syllabus' ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
           )}
         >
-          পাঠ্যক্রম ও অধ্যায়
+          পাঠ্যক্রম
         </button>
       </div>
+
+      {activeTab === 'guide' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-12"
+        >
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-black text-slate-900 tracking-tight">তাজবীদের বিস্তারিত গাইড</h2>
+            <p className="text-lg text-slate-500 font-medium leading-relaxed">
+              কুরআন তিলাওয়াতের প্রতিটি নিয়মকে আরও গভীরে গিয়ে বুঝুন এবং উদাহরণের মাধ্যমে আপনার পঠন শৈলীকে উন্নত করুন।
+            </p>
+          </div>
+
+          <div className="grid gap-8">
+            {DETAILED_RULES.map((rule, idx) => (
+              <motion.div
+                key={rule.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-xl shadow-slate-100 group"
+              >
+                <div className="p-8 md:p-12 space-y-10">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                    <div className="space-y-4 flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner",
+                          rule.color === 'emerald' ? "bg-emerald-50" :
+                          rule.color === 'red' ? "bg-red-50" :
+                          rule.color === 'blue' ? "bg-blue-50" :
+                          "bg-slate-50"
+                        )}>
+                          {rule.icon}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900">{rule.title}</h3>
+                      </div>
+                      <p className="text-xl font-medium text-slate-700 leading-relaxed font-bangla">
+                        {rule.definition}
+                      </p>
+                    </div>
+                    <div className="md:w-1/3 bg-slate-50 p-6 rounded-3xl border border-dotted border-slate-200 space-y-3 shrink-0">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">গুরুত্ব (Significance)</p>
+                      <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
+                        "{rule.importance}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <h4 className="flex items-center gap-2 text-sm font-black text-orange-600 uppercase tracking-widest">
+                        <ChevronLeft size={16} /> প্রধান বৈশিষ্ট্যসমূহ
+                      </h4>
+                      <ul className="space-y-4">
+                        {rule.rules.map((r, rIdx) => (
+                          <li key={rIdx} className="flex items-start gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm group-hover:border-slate-200 transition-colors">
+                            <div className="w-6 h-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-black shrink-0">
+                              {rIdx + 1}
+                            </div>
+                            <p className="text-slate-700 font-medium text-sm leading-relaxed">{r}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="space-y-6">
+                      <h4 className="flex items-center gap-2 text-sm font-black text-orange-600 uppercase tracking-widest">
+                        <Sparkles size={16} /> উদাহরণ ও উচ্চারণ
+                      </h4>
+                      <div className="grid gap-4">
+                        {rule.examples.map((ex, eIdx) => (
+                           <div key={eIdx} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between group/ex">
+                             <div className="space-y-2">
+                               <p className="text-2xl font-bold text-slate-900 font-arabic" dir="rtl">{ex.text}</p>
+                               <p className="text-xs font-bold text-slate-400 font-bangla">{ex.bn}</p>
+                             </div>
+                             <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    const audio = new Audio(ex.audio);
+                                    audio.play();
+                                  }}
+                                  className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-slate-400 hover:text-orange-500 hover:shadow-lg transition-all active:scale-95 border border-slate-100"
+                                >
+                                  <Play size={20} fill="currentColor" />
+                                </button>
+                                <button
+                                  onClick={() => startPractice(ex.text)}
+                                  className={cn(
+                                    "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all active:scale-95",
+                                    rule.color === 'emerald' ? "bg-emerald-500 shadow-emerald-200" :
+                                    rule.color === 'red' ? "bg-red-500 shadow-red-200" :
+                                    rule.color === 'blue' ? "bg-blue-500 shadow-blue-200" :
+                                    "bg-slate-900 shadow-slate-200"
+                                  )}
+                                >
+                                  <Mic size={20} />
+                                </button>
+                             </div>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {activeTab === 'makharij' && (
         <motion.div
